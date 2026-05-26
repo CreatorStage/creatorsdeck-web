@@ -77,9 +77,7 @@ export default function TeleprompterView({
   const controlBorder = isDark ? "border-[#2a2a2a]" : "border-[#e0e0e0]";
 
   return (
-    <div className={`${isFullscreen ? "fixed inset-0 z-[1000]" : "relative rounded-[6px] overflow-hidden border"} ${bgColor} ${textColor} ${borderColor} flex flex-col`}
-      style={{ minHeight: isFullscreen ? "100vh" : "78vh" }}
-    >
+    <div className={`${isFullscreen ? "fixed inset-0 z-[1000]" : "w-full"} ${bgColor} ${textColor} flex flex-col`}>
       {/* ─── CONTROLS BAR ─── */}
       <div className={`shrink-0 ${controlBg} border-b ${controlBorder} px-6 lg:px-10 py-3.5 flex flex-wrap items-center gap-5`}>
 
@@ -192,7 +190,7 @@ export default function TeleprompterView({
         <div
           ref={scrollContainerRef}
           onClick={onToggleScroll}
-          className="h-full overflow-y-auto cursor-pointer px-8 lg:px-24 py-16 scroll-smooth"
+          className="h-full overflow-y-auto cursor-pointer py-16 scroll-smooth"
           style={{ scrollbarWidth: "none" }}
         >
           <div

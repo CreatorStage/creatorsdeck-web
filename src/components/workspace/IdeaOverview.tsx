@@ -80,10 +80,10 @@ export default function IdeaOverview({
   const flagState = { evergreen, trend, sponsored };
 
   return (
-    <div className="w-full space-y-6 pb-20">
+    <div className="w-full space-y-6 p-7">
 
       {/* Section: Informações Básicas */}
-      <section className="yt-card overflow-hidden">
+      <section className="overflow-hidden">
         <div className="px-7 py-5 border-b border-yt-bg-overlay flex items-center gap-3">
           <span className="material-icons text-yt-red text-lg">info_outline</span>
           <h2 className="text-sm font-bold text-yt-text-primary uppercase tracking-wider">Informações Básicas</h2>
@@ -211,7 +211,7 @@ export default function IdeaOverview({
       </section>
 
       {/* Section: Status de Produção */}
-      <section className="yt-card overflow-hidden">
+      <section className="overflow-hidden">
         <div className="px-7 py-5 border-b border-yt-bg-overlay flex items-center gap-3">
           <span className="material-icons text-yt-red text-lg">timeline</span>
           <h2 className="text-sm font-bold text-yt-text-primary uppercase tracking-wider">Status de Produção</h2>
@@ -238,7 +238,7 @@ export default function IdeaOverview({
       </section>
 
       {/* Section: Brainstorm de Títulos */}
-      <section className="yt-card overflow-hidden">
+      <section className="overflow-hidden">
         <div className="px-7 py-5 border-b border-yt-bg-overlay flex items-center gap-3">
           <span className="material-icons text-yt-red text-lg">title</span>
           <h2 className="text-sm font-bold text-yt-text-primary uppercase tracking-wider">Brainstorm de Títulos Alternativos</h2>

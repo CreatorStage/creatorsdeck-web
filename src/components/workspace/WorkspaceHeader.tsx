@@ -55,8 +55,6 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   const statusLabel = productionStatuses.find((item) => item.value === status)?.label || status;
   const isSaving = saveVisualState === "sync";
 
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-
   return (
     <>
       {/* ─── TOP NAVIGATION BAR ─── */}
@@ -97,45 +95,7 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
             </span>
           </button>
 
-          {/* Profile */}
-          <div className="relative">
-            <button
-              onClick={() => { setProfileDropdownOpen(!profileDropdownOpen); }}
-              className="flex items-center gap-2 p-1 hover:bg-white/5 rounded-full transition-colors cursor-pointer bg-transparent border-0"
-            >
-              <div className="w-8 h-8 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-sm font-bold hover:bg-yt-bg-overlay text-yt-text-primary">
-                {initials}
-              </div>
-              <span className="material-icons text-yt-text-secondary text-lg hidden md:inline">arrow_drop_down</span>
-            </button>
 
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-56 bg-yt-bg-surface border border-yt-bg-overlay rounded-[6px] shadow-2xl py-1.5 z-[100]">
-                <div className="px-4 py-3 border-b border-yt-bg-overlay">
-                  <p className="text-xs font-extrabold text-yt-text-primary truncate uppercase tracking-wider">{user?.name || "Criador"}</p>
-                  <p className="text-[10px] text-yt-text-secondary truncate mt-0.5 font-sans">{user?.email || "Pro Plan Member"}</p>
-                </div>
-                <div className="py-1">
-                  <button onClick={() => { setProfileDropdownOpen(false); onGoToDashboard?.(); }} className="w-full text-left px-4 py-2.5 text-xs text-yt-text-primary hover:text-yt-text-primary hover:bg-yt-bg-elevated transition-colors flex items-center gap-2.5 bg-transparent border-0 cursor-pointer font-sans">
-                    <span className="material-icons text-sm text-yt-text-secondary">dashboard</span>
-                    Voltar ao Painel
-                  </button>
-                  <button onClick={() => { setProfileDropdownOpen(false); onBack(); }} className="w-full text-left px-4 py-2.5 text-xs text-yt-text-primary hover:text-yt-text-primary hover:bg-yt-bg-elevated transition-colors flex items-center gap-2.5 bg-transparent border-0 cursor-pointer font-sans">
-                    <span className="material-icons text-sm text-yt-text-secondary">lightbulb_outline</span>
-                    Banco de Ideias
-                  </button>
-                </div>
-                {onLogout && (
-                  <div className="border-t border-yt-bg-overlay pt-1 mt-1">
-                    <button onClick={() => { setProfileDropdownOpen(false); onLogout(); }} className="w-full text-left px-4 py-2.5 text-xs text-yt-red hover:bg-yt-bg-elevated transition-colors flex items-center gap-2.5 bg-transparent border-0 font-bold cursor-pointer font-sans">
-                      <span className="material-icons text-sm text-yt-red">logout</span>
-                      Sair
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </header>
 

@@ -60,11 +60,11 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="bg-[#1c1c1c] border border-[#404040] rounded-sm w-full max-w-lg p-6 relative z-10 shadow-2xl">
-        <div className="flex items-center justify-between mb-6 border-b border-[#404040] pb-4">
+      <div className="bg-[#1c1c1c] rounded-sm w-full max-w-6xl h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-2rem)] p-6 relative z-10 shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between mb-6 border-b border-[#404040] pb-4 shrink-0">
           <h3 className="text-base font-semibold text-[#f1f1f1] uppercase tracking-wider flex items-center gap-2">
             <span className="material-icons text-[#aaaaaa]">settings</span>
             Configurações da Conta
@@ -75,11 +75,11 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
         </div>
 
         {loading ? (
-          <div className="py-10 text-center">
+          <div className="py-10 text-center flex-1 flex items-center justify-center">
             <span className="material-icons animate-sync-spin text-[#ff5045]">sync</span>
           </div>
         ) : (
-          <form onSubmit={handleSave} className="space-y-5">
+          <form onSubmit={handleSave} className="space-y-5 flex-1 overflow-y-auto pr-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#aaaaaa] mb-1.5">
@@ -126,7 +126,7 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
             {error && <p className="text-red-500 text-[10px] uppercase font-bold tracking-wider">{error}</p>}
             {success && <p className="text-green-500 text-[10px] uppercase font-bold tracking-wider">Configurações salvas!</p>}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-[#404040]">
+            <div className="flex justify-end gap-3 pt-4 border-t border-[#404040] sticky bottom-0 bg-[#1c1c1c] pb-1">
               <button
                 type="button"
                 onClick={onClose}

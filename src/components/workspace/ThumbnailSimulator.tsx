@@ -29,10 +29,11 @@ const createId = () => {
 
 const truncationLimit = { desktop: 68, mobile: 42 };
 
-function MockCard({ title, channel, views, time, accent }: { title: string; channel: string; views: string; time: string; accent: string; }) {
+function MockCard({ title, channel, views, time, accent, thumbnail }: { title: string; channel: string; views: string; time: string; accent: string; thumbnail?: UploadedThumbnail; }) {
   return (
     <article className="flex gap-3 rounded-[10px] p-2 hover:bg-white/5 transition-colors">
-      <div className={`w-40 h-24 rounded-[10px] bg-gradient-to-br ${accent} relative overflow-hidden shrink-0`}>
+      <div className={`w-40 h-24 rounded-[10px] ${thumbnail ? '' : `bg-gradient-to-br ${accent}`} relative overflow-hidden shrink-0`}>
+        {thumbnail && <img src={thumbnail.url} alt={thumbnail.name} className="absolute inset-0 w-full h-full object-cover" />}
         <div className="absolute inset-0 bg-black/15" />
         <div className="absolute bottom-2 right-2 rounded px-1.5 py-0.5 bg-black/80 text-[10px] font-bold text-white">{time}</div>
       </div>
@@ -147,8 +148,8 @@ export default function ThumbnailSimulator({ idea }: ThumbnailSimulatorProps) {
   const secondaryThumbnails = thumbnails.slice(1);
 
   return (
-    <div className="space-y-6 pb-20">
-      <section className="yt-card overflow-hidden">
+    <div className="w-full space-y-6 p-7">
+      <section className="overflow-hidden">
         <div className="px-7 py-5 border-b border-yt-bg-overlay flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest font-bold text-yt-text-disabled">Simulador client-side</p>
@@ -170,9 +171,9 @@ export default function ThumbnailSimulator({ idea }: ThumbnailSimulatorProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.35fr] gap-6 p-7">
-          <div className="space-y-5">
-            <div className="yt-card p-5 border border-yt-bg-overlay bg-yt-bg-primary/70 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 p-7 min-w-0">
+          <div className="space-y-5 min-w-0">
+            <div className="p-5 space-y-4">
               <div>
                 <p className="text-[10px] uppercase tracking-widest font-bold text-yt-text-disabled">Thumbnails</p>
                 <p className="text-sm text-yt-text-secondary font-sans">Envie até 3 imagens. Elas ficam só no navegador até você recarregar a página.</p>
@@ -202,7 +203,7 @@ export default function ThumbnailSimulator({ idea }: ThumbnailSimulatorProps) {
               </div>
             </div>
 
-            <div className="yt-card p-5 border border-yt-bg-overlay bg-yt-bg-primary/70 space-y-4">
+            <div className="p-5 space-y-4">
               <div>
                 <p className="text-[10px] uppercase tracking-widest font-bold text-yt-text-disabled">Títulos</p>
                 <p className="text-sm text-yt-text-secondary font-sans">Clique em uma opção existente ou adicione uma nova variante para comparar o corte no feed.</p>
@@ -254,24 +255,24 @@ export default function ThumbnailSimulator({ idea }: ThumbnailSimulatorProps) {
             </div>
 
             {layout === "desktop" ? (
-              <div className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.25fr_0.85fr] gap-4 items-start">
-                <div className="space-y-3">
-                  {FAKE_CARDS.slice(0, 3).map((card) => (
-                    <MockCard key={card.title} {...card} />
-                  ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-w-0">
+                <div className="space-y-3 min-w-0">
+                  {FAKE_CARDS.slice(0, 3).map((card, index) => (
+  <MockCard key={card.title} {...card} thumbnail={thumbnails[index % thumbnails.length]} />
+))}
                 </div>
 
                 <div className="space-y-3 sticky top-6">
                   <LiveCard title={selectedTitle} thumbnail={heroThumbnail} layout="desktop" />
-                  <div className="rounded-[12px] border border-yt-bg-overlay bg-white/[0.02] p-4 text-sm text-yt-text-secondary font-sans leading-7">
+                  <div className="rounded-[12px] border border-yt-bg-overlay bg-white/[0.02] p-4 text-xs text-yt-text-secondary font-sans leading-6">
                     <strong className="text-yt-text-primary">Truncamento visual:</strong> se o título passar do espaço do feed, a miniatura mostra o corte com fade e badge.
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  {FAKE_CARDS.slice(3).map((card) => (
-                    <MockCard key={card.title} {...card} />
-                  ))}
+                  {FAKE_CARDS.slice(3).map((card, index) => (
+  <MockCard key={card.title} {...card} thumbnail={thumbnails[(index + 3) % thumbnails.length]} />
+))}
                 </div>
               </div>
             ) : (

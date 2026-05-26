@@ -63,7 +63,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   estimatedDuration,
 }) => {
   return (
-    <div className="bg-yt-bg-surface border border-yt-bg-overlay p-5 rounded-sm w-full space-y-4">
+    <div className="w-full space-y-4 p-7">
 
       {/* Header + Mode Toggle */}
       <div className="flex items-center justify-between border-b border-yt-bg-overlay/50 pb-3 mb-2 flex-wrap gap-3 select-none">

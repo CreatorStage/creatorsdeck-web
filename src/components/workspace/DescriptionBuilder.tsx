@@ -157,8 +157,8 @@ export default function DescriptionBuilder({ channel }: DescriptionBuilderProps)
   };
 
   return (
-    <div className="space-y-6 pb-20">
-      <section className="yt-card overflow-hidden">
+    <div className="w-full space-y-6 p-7">
+      <section className="overflow-hidden">
         <div className="px-7 py-5 border-b border-yt-bg-overlay flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="material-icons text-yt-red text-lg">description</span>
@@ -226,7 +226,7 @@ export default function DescriptionBuilder({ channel }: DescriptionBuilderProps)
               })}
             </div>
 
-            <form onSubmit={handleSaveBlock} className="yt-card p-5 border border-yt-bg-overlay bg-yt-bg-primary/70 space-y-4">
+            <form onSubmit={handleSaveBlock} className="p-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-bold text-yt-text-primary">{editorId ? "Editar bloco" : "Novo bloco"}</h3>
                 {editorId && (

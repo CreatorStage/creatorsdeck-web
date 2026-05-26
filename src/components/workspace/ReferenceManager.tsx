@@ -31,12 +31,11 @@ const ReferenceManager: React.FC<ReferenceManagerProps> = ({
   const imageRefs = references.filter(r => r.type === 'IMAGE');
 
   return (
-    <div className="w-full pb-10">
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+    <div className="w-full grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 p-7 min-w-0">
 
         {/* ─── ADD PANEL ─── */}
-        <aside className="space-y-5">
-          <section className="yt-card overflow-hidden sticky top-[100px]">
+        <aside className="space-y-5 min-w-0">
+          <section className="overflow-hidden overflow-x-hidden sticky top-7">
             {/* Add Link */}
             <div className="px-6 py-4 border-b border-yt-bg-overlay flex items-center gap-2">
               <span className="material-icons text-yt-red text-base">add_link</span>
@@ -119,7 +118,7 @@ const ReferenceManager: React.FC<ReferenceManagerProps> = ({
         <div className="space-y-6">
 
           {/* Links Section */}
-          <section className="yt-card overflow-hidden">
+          <section className="overflow-hidden">
             <div className="px-6 py-4 border-b border-yt-bg-overlay flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="material-icons text-yt-red text-base">smart_display</span>
@@ -189,7 +188,7 @@ const ReferenceManager: React.FC<ReferenceManagerProps> = ({
           </section>
 
           {/* Moodboard Section */}
-          <section className="yt-card overflow-hidden">
+          <section className="overflow-hidden">
             <div className="px-6 py-4 border-b border-yt-bg-overlay flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="material-icons text-yt-red text-base">collections</span>
@@ -227,7 +226,6 @@ const ReferenceManager: React.FC<ReferenceManagerProps> = ({
             </div>
           </section>
         </div>
-      </div>
     </div>
   );
 };

@@ -970,7 +970,7 @@ export default function VideoIdeaWorkspace({
       )}
 
       {!teleprompterFullscreen && (
-        <main className={`px-5 pb-10 pt-[100px] lg:px-12 transition-[margin] duration-200 ${sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[300px]"}`}>
+        <main className={`mt-[80px] h-[calc(100vh-80px)] overflow-y-auto transition-all duration-200 w-full ${sidebarCollapsed ? "lg:ml-[72px] lg:w-[calc(100%-72px)]" : "lg:ml-[300px] lg:w-[calc(100%-300px)]"}`}>
           {currentTab === "overview" && (
             <IdeaOverview
               mainTitle={mainTitle}

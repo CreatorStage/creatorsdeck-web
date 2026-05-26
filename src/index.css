@@ -33,21 +33,17 @@
   --yt-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Light Mode Override */
 :root[data-theme='light'] {
-  --yt-bg-primary: #f2f3f5;
-  --yt-bg-surface: #ffffff;
-  --yt-bg-elevated: #fafafb;
-  --yt-bg-overlay: #e4e6eb;
-  --yt-red: #cc1100;
-  --yt-red-hover: #990000;
-  --yt-text-primary: #0f0f0f;
-  --yt-text-secondary: #5f6368;
-  --yt-text-disabled: #80868b;
-  --yt-blue: #065fd4;
-  --yt-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
-  --yt-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.03);
-  --yt-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --yt-bg-primary: #e2e5ea;      /* fundo geral — cinza médio, base visível */
+  --yt-bg-surface: #f0f1f4;      /* cards — claramente mais claro que o fundo */
+  --yt-bg-elevated: #f8f9fb;     /* elementos elevados — quase branco, topo da hierarquia */
+  --yt-bg-overlay: #b8bcc7;      /* bordas/divisores — contraste nítido */
+  --yt-text-primary: #111318;    /* texto principal — quase preto */
+  --yt-text-secondary: #3d424f;  /* texto secundário — escuro suficiente */
+  --yt-text-disabled: #8a8f9e;   /* texto desabilitado */
+  --yt-card-shadow: 0 2px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+  --yt-shadow-sm: 0 2px 6px rgba(0,0,0,0.08);
+  --yt-shadow-md: 0 6px 20px rgba(0,0,0,0.12);
 }
 
 body {

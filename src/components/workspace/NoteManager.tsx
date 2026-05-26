@@ -21,10 +21,10 @@ const NoteManager: React.FC<NoteManagerProps> = ({
   const charCount = newNoteText.length;
 
   return (
-    <div className="w-full space-y-6 pb-20">
+    <div className="w-full space-y-6 p-7">
 
       {/* Editor de Notas */}
-      <section className="yt-card overflow-hidden">
+      <section className="overflow-hidden">
         <div className="px-6 py-4 border-b border-yt-bg-overlay flex items-center gap-2">
           <span className="material-icons text-yt-red text-base">edit_note</span>
           <h3 className="text-xs font-bold text-yt-text-primary uppercase tracking-wider">Anotações Rápidas</h3>
@@ -61,7 +61,7 @@ const NoteManager: React.FC<NoteManagerProps> = ({
       </section>
 
       {/* Lista de Notas */}
-      <section className="yt-card overflow-hidden">
+      <section className="overflow-hidden">
         <div className="px-6 py-4 border-b border-yt-bg-overlay flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="material-icons text-yt-red text-base">history</span>

@@ -86,8 +86,6 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
   const [selectedFilter, setSelectedFilter] = useState<"ALL" | VideoIdeaStatus>("ALL");
   const [viewMode, setViewMode] = useState<"list" | "kanban" | "goals" | "references" | "settings">("list");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [recordModalOpen, setRecordModalOpen] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
@@ -543,58 +541,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
               </span>
             </button>
 
-            {/* Profile Avatar + Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setProfileDropdownOpen(!profileDropdownOpen);
-                }}
-                className="flex items-center gap-2.5 p-1 hover:bg-white/5 rounded-full transition-colors cursor-pointer bg-transparent border-0"
-                title="Menu do Usuário"
-              >
-                <div className="w-9 h-9 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-sm font-bold hover:bg-yt-bg-overlay text-yt-text-primary">
-                  {user?.name ? user.name[0].toUpperCase() : channel.name[0]?.toUpperCase() || "C"}
-                </div>
-                <span className="material-icons text-yt-text-secondary text-lg hidden md:inline">arrow_drop_down</span>
-              </button>
 
-              {profileDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-yt-bg-surface border border-yt-bg-overlay rounded-[6px] shadow-2xl py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="px-4 py-3 border-b border-yt-bg-overlay text-left">
-                    <p className="text-xs font-extrabold text-yt-text-primary truncate uppercase tracking-wider">{user?.name || "Criador"}</p>
-                    <p className="text-[10px] text-yt-text-secondary truncate mt-0.5 font-sans">{user?.email || "Pro Plan Member"}</p>
-                  </div>
-                  
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setProfileDropdownOpen(false);
-                        onBack();
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-xs text-yt-text-primary hover:text-yt-text-primary hover:bg-yt-bg-elevated transition-colors flex items-center gap-2.5 bg-transparent border-0 cursor-pointer font-sans"
-                    >
-                      <span className="material-icons text-sm text-yt-text-secondary">dashboard</span>
-                      Voltar ao Painel
-                    </button>
-                  </div>
-
-                  {onLogout && (
-                    <div className="border-t border-yt-bg-overlay pt-1 mt-1">
-                      <button
-                        onClick={() => {
-                          setProfileDropdownOpen(false);
-                          onLogout();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-yt-red hover:bg-white/5 transition-colors flex items-center gap-2.5 bg-transparent border-0 font-bold cursor-pointer font-sans"
-                      >
-                        <span className="material-icons text-sm text-yt-red">logout</span>
-                        Sair
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </header>
 
@@ -646,7 +593,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                 </div>
               </section>
             ) : viewMode === "settings" ? (
-              <section className="yt-card p-7 lg:p-8 max-w-5xl mx-auto">
+              <section className="w-full min-h-[calc(100vh-220px)] p-7 lg:p-8 flex flex-col">
                 <div className="flex flex-col gap-2 mb-8">
                   <p className="studio-label text-yt-red">Configurações do canal</p>
                   <h3 className="text-3xl font-extrabold text-yt-text-primary">Ajuste o posicionamento do seu canal</h3>
@@ -655,7 +602,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                   </p>
                 </div>
 
-                <form onSubmit={handleSaveChannelSettings} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <form onSubmit={handleSaveChannelSettings} className="grid grid-cols-1 lg:grid-cols-2 gap-5 flex-1">
                   <div className="space-y-5 lg:col-span-2">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Nome do canal</label>
@@ -742,14 +689,14 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                 </form>
               </section>
             ) : viewMode === "references" ? (
-              <section className="yt-card p-7 lg:p-8 max-w-5xl mx-auto space-y-8">
+              <section className="w-full min-h-[calc(100vh-220px)] p-7 lg:p-8 space-y-8 flex flex-col">
                 <div className="flex flex-col gap-2">
                   <p className="studio-label text-yt-red">Canais de referência</p>
                   <h3 className="text-3xl font-extrabold text-yt-text-primary">Salve links para buscar ideias</h3>
                   <p className="text-sm text-yt-text-secondary max-w-2xl font-sans">Guarde canais, playlists, vídeos ou páginas que sirvam de inspiração para este canal.</p>
                 </div>
 
-                <form onSubmit={handleAddChannelReference} className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.6fr] gap-4">
+                <form onSubmit={handleAddChannelReference} className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.6fr] gap-4 flex-none">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Nome da referência</label>
                     <input value={referenceTitle} onChange={(e) => setReferenceTitle(e.target.value)} className="studio-input w-full p-3" placeholder="Ex.: Canal Tech Vision" />
@@ -772,7 +719,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                   </div>
                 </form>
 
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1">
                   {channelReferences.length === 0 ? (
                     <div className="border border-dashed border-yt-bg-overlay/60 rounded-[12px] bg-white/[0.01] px-6 py-10 text-center">
                       <span className="material-icons text-4xl text-yt-text-disabled mb-4">link</span>
@@ -880,11 +827,14 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                 </div>
               </section>
             ) : viewMode === "goals" ? (
-              <section className="yt-card p-7 lg:p-8 max-w-5xl mx-auto">
-                <div className="flex flex-col gap-2">
-                  <p className="studio-label text-yt-red">Metas</p>
-                  <h3 className="text-2xl font-bold text-yt-text-primary">Visão geral de metas</h3>
-                  <p className="text-sm text-yt-text-secondary">Aqui ficam as metas do canal (em desenvolvimento).</p>
+              <section className="w-full min-h-[calc(100vh-220px)] p-7 lg:p-8 flex flex-col overflow-y-auto">
+                <div className="flex flex-col gap-6 flex-1">
+                  <div className="flex flex-col gap-2">
+                    <p className="studio-label text-yt-red">Metas</p>
+                    <h3 className="text-3xl font-extrabold text-yt-text-primary">Metas de Crescimento</h3>
+                    <p className="text-sm text-yt-text-secondary max-w-2xl font-sans">Defina e acompanhe as metas de crescimento do seu canal.</p>
+                  </div>
+                  <ChannelGoals channel={channel} />
                 </div>
               </section>
             ) : null}
