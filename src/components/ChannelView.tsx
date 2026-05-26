@@ -1,0 +1,994 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Channel, ChannelReferenceLink, ChecklistState, ChecklistStateEntry, VideoIdea, VideoIdeaStatus, User } from "../types";
+import { api } from "../api";
+import ChannelGoals from "./ChannelGoals";
+import StudioSidebar from "./shared/StudioSidebar";
+import ChecklistDialog from "./channel/ChecklistDialog";
+
+interface ChannelViewProps {
+  channel: Channel;
+  onBack: () => void;
+  onSelectIdea: (idea: VideoIdea, initialTab?: any) => void;
+  onChannelUpdated?: (channel: Channel) => void;
+  user?: User | null;
+  onLogout?: () => void;
+  theme: "dark" | "light";
+  toggleTheme: () => void;
+}
+
+const STATUS_LABELS: Record<VideoIdeaStatus, { label: string; badgeClass: string }> = {
+  IDEA: { label: "Ideia", badgeClass: "badge-idea" },
+  RESEARCHING: { label: "Pesquisando", badgeClass: "badge-progress" },
+  SCRIPTING: { label: "Roteirizando", badgeClass: "badge-scripted" },
+  READY_TO_RECORD: { label: "Pronto p/ Gravar", badgeClass: "badge-scripted" },
+  RECORDED: { label: "Gravado", badgeClass: "badge-recorded" },
+  EDITING: { label: "Editando", badgeClass: "badge-progress" },
+  SCHEDULED: { label: "Agendado", badgeClass: "badge-recorded" },
+  PUBLISHED: { label: "Publicado", badgeClass: "badge-published" },
+  ARCHIVED: { label: "Arquivado", badgeClass: "badge-archived" }
+};
+
+const SIDEBAR_ITEMS: { key: VideoIdeaStatus; label: string; icon: string }[] = [
+  { key: "IDEA", label: "Ideias", icon: "lightbulb_outline" },
+  { key: "RESEARCHING", label: "Pesquisando", icon: "search" },
+  { key: "SCRIPTING", label: "Roteirizando", icon: "format_list_bulleted" },
+  { key: "READY_TO_RECORD", label: "Pronto p/ Gravar", icon: "radio_button_unchecked" },
+  { key: "RECORDED", label: "Gravado", icon: "smart_display" },
+  { key: "EDITING", label: "Editando", icon: "movie_edit" },
+  { key: "SCHEDULED", label: "Agendado", icon: "calendar_today" },
+  { key: "PUBLISHED", label: "Publicado", icon: "check_circle_outline" }
+];
+
+const KANBAN_COLUMNS = SIDEBAR_ITEMS;
+
+const parseChecklistTemplates = (raw?: string): Record<VideoIdeaStatus, string[]> => {
+  if (!raw) {
+    return {} as Record<VideoIdeaStatus, string[]>;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return Object.entries(parsed).reduce((accumulator, [status, items]) => {
+        if (Array.isArray(items)) {
+          accumulator[status as VideoIdeaStatus] = items.map((item) => String(item)).filter(Boolean);
+        }
+        return accumulator;
+      }, {} as Record<VideoIdeaStatus, string[]>);
+    }
+  } catch {
+    // fallback vazio
+  }
+
+  return {} as Record<VideoIdeaStatus, string[]>;
+};
+
+const parseChecklistState = (raw?: string): ChecklistState => {
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as ChecklistState;
+    }
+  } catch {
+    // fallback vazio
+  }
+
+  return {};
+};
+
+export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUpdated, user, onLogout, theme, toggleTheme }: ChannelViewProps) {
+  const [ideas, setIdeas] = useState<VideoIdea[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState<"ALL" | VideoIdeaStatus>("ALL");
+  const [viewMode, setViewMode] = useState<"list" | "kanban" | "goals" | "references" | "settings">("list");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [recordModalOpen, setRecordModalOpen] = useState(false);
+
+  const [showModal, setShowModal] = useState(false);
+  const [mainTitle, setMainTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [channelDraft, setChannelDraft] = useState(channel);
+  const [savingChannel, setSavingChannel] = useState(false);
+  const [channelReferences, setChannelReferences] = useState<ChannelReferenceLink[]>([]);
+  const [referenceTitle, setReferenceTitle] = useState("");
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const [referenceNote, setReferenceNote] = useState("");
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+  const [checklistDraft, setChecklistDraft] = useState<Record<VideoIdeaStatus, string[]>>(() => parseChecklistTemplates(channel.checklistTemplates));
+  const [checklistInputs, setChecklistInputs] = useState<Partial<Record<VideoIdeaStatus, string>>>({});
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [pendingChecklistIdeaId, setPendingChecklistIdeaId] = useState<string | null>(null);
+  const [pendingChecklistStatus, setPendingChecklistStatus] = useState<VideoIdeaStatus | null>(null);
+
+  useEffect(() => {
+    setChannelDraft(channel);
+    setChecklistDraft(parseChecklistTemplates(channel.checklistTemplates));
+  }, [channel]);
+
+  useEffect(() => {
+    const fetchChannelReferences = async () => {
+      try {
+        setChannelReferences(await api.getChannelReferenceLinks(channel.id));
+      } catch (err) {
+        console.error("Erro ao buscar referências do canal", err);
+        setChannelReferences([]);
+      }
+    };
+
+    fetchChannelReferences();
+  }, [channel.id]);
+
+  useEffect(() => {
+    fetchIdeas();
+  }, [channel.id]);
+
+  const fetchIdeas = async () => {
+    try {
+      setLoading(true);
+      setIdeas(await api.getIdeas(channel.id));
+    } catch (err) {
+      console.error("Erro ao buscar ideias", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredIdeas = useMemo(() => {
+    const filtered = ideas.filter((idea) => {
+      const matchesFilter = selectedFilter === "ALL" || idea.status === selectedFilter;
+      return matchesFilter;
+    });
+    return [...filtered].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [ideas, selectedFilter]);
+
+  const metrics = {
+    total: ideas.length,
+    scripted: ideas.filter((idea) => ["SCRIPTING", "READY_TO_RECORD", "RECORDED", "EDITING", "SCHEDULED", "PUBLISHED"].includes(idea.status)).length,
+    publishedThisMonth: ideas.filter((idea) => {
+      if (idea.status !== "PUBLISHED") return false;
+      const dt = new Date(idea.updatedAt || idea.createdAt);
+      const now = new Date();
+      return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear();
+    }).length
+  };
+
+  const handleCreateIdea = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mainTitle.trim()) {
+      setError("O titulo principal da ideia e obrigatorio.");
+      return;
+    }
+
+    const tags = tagInput.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+    setSaving(true);
+    setError(null);
+
+    try {
+      const created = await api.createIdea(channel.id, mainTitle.trim(), description.trim(), tags, deadline || undefined);
+      setIdeas([created, ...ideas]);
+      setShowModal(false);
+      setMainTitle("");
+      setDescription("");
+      setTagInput("");
+      setDeadline("");
+    } catch (err: any) {
+      setError(err.message || "Erro ao criar ideia");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleArchiveIdea = async (ideaId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await api.updateIdea(ideaId, { status: "ARCHIVED" });
+    setIdeas((current) => current.map((idea) => idea.id === ideaId ? { ...idea, status: "ARCHIVED" } : idea));
+  };
+
+  const handleSaveChannelSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingChannel(true);
+    try {
+      const updated = await api.updateChannel(channel.id, {
+        ...channelDraft,
+        checklistTemplates: JSON.stringify(checklistDraft)
+      });
+      setChannelDraft(updated);
+      setChecklistDraft(parseChecklistTemplates(updated.checklistTemplates));
+      onChannelUpdated?.(updated);
+    } finally {
+      setSavingChannel(false);
+    }
+  };
+
+  const getChecklistItemsForStatus = (status: VideoIdeaStatus) => checklistDraft[status] || [];
+
+  const updateChecklistItems = (status: VideoIdeaStatus, items: string[]) => {
+    setChecklistDraft((current) => ({
+      ...current,
+      [status]: items
+    }));
+  };
+
+  const handleChecklistItemAdd = (status: VideoIdeaStatus) => {
+    const input = (checklistInputs[status] || "").trim();
+    if (!input) {
+      return;
+    }
+
+    const currentItems = getChecklistItemsForStatus(status);
+    if (!currentItems.includes(input)) {
+      updateChecklistItems(status, [...currentItems, input]);
+    }
+    setChecklistInputs((current) => ({ ...current, [status]: "" }));
+  };
+
+  const handleChecklistItemRemove = (status: VideoIdeaStatus, itemToRemove: string) => {
+    updateChecklistItems(status, getChecklistItemsForStatus(status).filter((item) => item !== itemToRemove));
+  };
+
+  const commitIdeaMove = async (ideaId: string, status: VideoIdeaStatus, checklistStateEntry?: ChecklistStateEntry) => {
+    const previous = ideas;
+    const existingIdea = ideas.find((item) => item.id === ideaId);
+    const existingChecklistState = parseChecklistState(existingIdea?.checklistState);
+    const nextChecklistState = checklistStateEntry
+      ? { ...existingChecklistState, [status]: checklistStateEntry }
+      : existingChecklistState;
+
+    setIdeas((current) => current.map((idea) => idea.id === ideaId ? { ...idea, status, checklistState: checklistStateEntry ? JSON.stringify(nextChecklistState) : idea.checklistState } : idea));
+
+    try {
+      const updated = await api.updateIdea(ideaId, {
+        status,
+        ...(checklistStateEntry ? { checklistState: JSON.stringify(nextChecklistState) } : {})
+      });
+      setIdeas((current) => current.map((idea) => idea.id === ideaId ? updated : idea));
+    } catch (err) {
+      console.error(err);
+      setIdeas(previous);
+    } finally {
+      setChecklistDialogOpen(false);
+      setPendingChecklistIdeaId(null);
+      setPendingChecklistStatus(null);
+    }
+  };
+
+  const handleAddChannelReference = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReferenceError(null);
+
+    if (!referenceTitle.trim() || !referenceUrl.trim()) {
+      setReferenceError("Informe um título e um link válido.");
+      return;
+    }
+
+    let normalizedUrl = referenceUrl.trim();
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = `https://${normalizedUrl}`;
+    }
+
+    try {
+      // valida URL
+      new URL(normalizedUrl);
+    } catch {
+      setReferenceError("O link informado não é válido.");
+      return;
+    }
+
+    const nextReference: ChannelReferenceLink = {
+      title: referenceTitle.trim(),
+      url: normalizedUrl,
+      note: referenceNote.trim(),
+      id: "",
+      channelId: channel.id,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const added = await api.addChannelReferenceLink(channel.id, nextReference.title, nextReference.url, nextReference.note || "");
+      setChannelReferences((current) => [added, ...current]);
+      setReferenceTitle("");
+      setReferenceUrl("");
+      setReferenceNote("");
+    } catch (err: any) {
+      setReferenceError(err.message || "Erro ao salvar referência.");
+    }
+  };
+
+  const handleRemoveChannelReference = async (referenceId: string) => {
+    try {
+      await api.deleteChannelReferenceLink(referenceId);
+      setChannelReferences((current) => current.filter((reference) => reference.id !== referenceId));
+    } catch (err) {
+      console.error("Erro ao remover referência", err);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, ideaId: string) => {
+    e.dataTransfer.setData("ideaId", ideaId);
+  };
+
+  const handleDrop = async (e: React.DragEvent, status: VideoIdeaStatus) => {
+    e.preventDefault();
+    const ideaId = e.dataTransfer.getData("ideaId");
+    const items = getChecklistItemsForStatus(status);
+
+    if (items.length > 0) {
+      setPendingChecklistIdeaId(ideaId);
+      setPendingChecklistStatus(status);
+      setChecklistDialogOpen(true);
+      return;
+    }
+
+    await commitIdeaMove(ideaId, status);
+  };
+
+  const renderIdeaCard = (idea: VideoIdea) => {
+    const statusMeta = STATUS_LABELS[idea.status] || STATUS_LABELS.IDEA;
+    return (
+      <article
+        key={idea.id}
+        onClick={() => onSelectIdea(idea)}
+        draggable
+        onDragStart={(e) => handleDragStart(e, idea.id)}
+        className="yt-card p-5 cursor-pointer group"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className={`badge ${statusMeta.badgeClass}`}>{statusMeta.label}</span>
+              {idea.evergreen && <span className="studio-label text-[#66bb6a]">Evergreen</span>}
+              {idea.trend && <span className="studio-label text-[#3ea6ff]">Tendência</span>}
+              {idea.sponsored && <span className="studio-label text-[#ffb74d]">Patrocinado</span>}
+            </div>
+            <h3 className="text-xl font-bold text-yt-text-primary truncate group-hover:text-yt-red transition-colors">{idea.mainTitle}</h3>
+            <p className="text-sm text-yt-text-secondary leading-6 mt-2 line-clamp-2">{idea.description || "Sem descrição configurada."}</p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {idea.status !== "ARCHIVED" && (
+              <button onClick={(e) => handleArchiveIdea(idea.id, e)} className="p-2 text-yt-text-disabled hover:text-yt-text-primary bg-transparent border-0 cursor-pointer" title="Arquivar">
+                <span className="material-icons">archive</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-yt-bg-overlay flex flex-wrap items-center gap-2">
+          {(idea.tags || []).slice(0, 4).map((tag) => (
+            <span key={tag} className="studio-label bg-yt-bg-primary border border-yt-bg-overlay px-2 py-1 text-yt-text-secondary">#{tag}</span>
+          ))}
+          {idea.publishedUrl && (
+            <a href={idea.publishedUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="studio-label text-yt-red ml-auto">
+              Link Publicado
+            </a>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  const renderIdeaListItem = (idea: VideoIdea) => {
+    const statusMeta = STATUS_LABELS[idea.status] || STATUS_LABELS.IDEA;
+    const formattedDate = idea.createdAt 
+      ? new Date(idea.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+      : "--/--/----";
+    return (
+      <article
+        key={idea.id}
+        onClick={() => onSelectIdea(idea)}
+        draggable
+        onDragStart={(e) => handleDragStart(e, idea.id)}
+        className="yt-card p-4 md:py-3.5 md:px-6 cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:bg-yt-bg-elevated"
+      >
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <div className="hidden sm:flex w-10 h-10 rounded-sm bg-yt-bg-primary border border-yt-bg-overlay items-center justify-center text-yt-red shrink-0 font-sans">
+            <span className="material-icons text-base">lightbulb_outline</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+              <span className={`badge ${statusMeta.badgeClass} text-[10px] px-2 py-0.5`}>{statusMeta.label}</span>
+              {idea.evergreen && <span className="studio-label text-[#66bb6a] text-[10px] px-1 py-0">Evergreen</span>}
+              {idea.trend && <span className="studio-label text-[#3ea6ff] text-[10px] px-1 py-0">Tendência</span>}
+              {idea.sponsored && <span className="studio-label text-[#ffb74d] text-[10px] px-1 py-0">Patrocinado</span>}
+              {(idea.tags || []).slice(0, 3).map((tag) => (
+                <span key={tag} className="text-[10px] text-yt-text-secondary bg-yt-bg-primary border border-yt-bg-overlay px-1.5 py-0 rounded-sm">#{tag}</span>
+              ))}
+            </div>
+            <div className="flex flex-col xl:flex-row xl:items-baseline gap-1 xl:gap-3">
+              <h3 className="text-base font-extrabold text-yt-text-primary group-hover:text-yt-red transition-colors">{idea.mainTitle}</h3>
+              <p className="text-xs text-yt-text-secondary truncate max-w-xl font-sans">{idea.description || "Sem descrição configurada."}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between md:justify-end gap-5 shrink-0 border-t border-yt-bg-overlay/30 md:border-0 pt-3 md:pt-0">
+          <div className="flex flex-col items-start md:items-end font-sans">
+            <span className="text-[10px] text-yt-text-disabled uppercase tracking-wider font-bold">Criado em</span>
+            <span className="text-xs font-semibold text-yt-text-primary mt-0.5">{formattedDate}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {idea.publishedUrl && (
+              <a href={idea.publishedUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-2 text-yt-red hover:text-yt-red-hover transition-colors flex items-center justify-center bg-transparent border-0 cursor-pointer" title="Ver Link Publicado">
+                <span className="material-icons text-lg">open_in_new</span>
+              </a>
+            )}
+            {idea.status !== "ARCHIVED" && (
+              <button onClick={(e) => handleArchiveIdea(idea.id, e)} className="p-2 text-yt-text-disabled hover:text-yt-text-primary transition-colors flex items-center justify-center bg-transparent border-0 cursor-pointer" title="Arquivar">
+                <span className="material-icons text-lg">archive</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+
+  return (
+    <div className="studio-shell flex">
+      {/* ─── SIDEBAR ─── */}
+      <StudioSidebar
+        className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-[300px] bg-yt-bg-surface border-r border-yt-bg-overlay ${sidebarCollapsed ? "!w-[72px]" : ""}`}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
+        brandTitle="CreatorStage"
+        brandSubtitle="Studio"
+        brandCollapsedLabel="CS"
+        topSection={
+          sidebarCollapsed ? (
+            <button
+              onClick={() => setShowModal(true)}
+              title="Nova Ideia"
+              className="w-full h-10 bg-[#ff5045] hover:bg-[#ff3f33] text-white rounded-[3px] flex items-center justify-center transition-colors cursor-pointer border-0"
+            >
+              <span className="material-icons text-base">add</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowModal(true)}
+              className="w-full bg-[#ff5045] hover:bg-[#ff3f33] text-[#0b0b0b] py-3 rounded-[3px] font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border-0"
+            >
+              <span className="material-icons text-base">add</span>
+              Nova Ideia
+            </button>
+          )
+        }
+        footerSection={
+          <div className="space-y-2">
+            <button
+              onClick={onBack}
+              className={`w-full text-left text-yt-text-secondary hover:text-yt-text-primary flex items-center gap-3 text-sm transition-colors bg-transparent border-0 cursor-pointer ${sidebarCollapsed ? "justify-center" : ""}`}
+            >
+              <span className="material-icons text-[18px]">arrow_back</span>
+              {!sidebarCollapsed && <span className="font-medium">Voltar ao Início</span>}
+            </button>
+            <button
+              onClick={() => setViewMode("settings")}
+              className={`w-full text-left text-yt-text-secondary hover:text-yt-text-primary flex items-center gap-3 text-sm transition-colors bg-transparent border-0 cursor-pointer ${sidebarCollapsed ? "justify-center" : ""}`}
+            >
+              <span className="material-icons text-[18px]">settings</span>
+              {!sidebarCollapsed && <span className="font-medium">Configurações do Canal</span>}
+            </button>
+
+            {!sidebarCollapsed && user && (
+              <div className="flex items-center gap-3 pt-3 border-t border-yt-bg-overlay">
+                <span className="w-8 h-8 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-xs font-bold shrink-0 text-yt-text-primary">
+                  {user.name?.[0]?.toUpperCase() || "C"}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate text-yt-text-primary">{user.name || "Criador"}</p>
+                  <p className="text-[10px] text-yt-text-disabled uppercase tracking-wider font-sans">Plano Pro</p>
+                </div>
+              </div>
+            )}
+          </div>
+        }
+      >
+        {SIDEBAR_ITEMS.map((item) => {
+          const isActive = selectedFilter === item.key || (selectedFilter === "ALL" && item.key === "IDEA");
+          return (
+            <button
+              key={item.key}
+              title={item.label}
+              onClick={() => {
+                if (item.key === "IDEA") {
+                  setSelectedFilter("ALL");
+                  setViewMode("list");
+                } else {
+                  setSelectedFilter(item.key);
+                }
+              }}
+              className={`w-full h-[50px] flex items-center gap-3.5 border-l-[3px] text-left transition-colors ${
+                isActive
+                  ? "bg-yt-bg-elevated border-yt-red text-yt-red"
+                  : "border-transparent text-yt-text-secondary hover:bg-yt-bg-elevated hover:text-yt-text-primary"
+              } ${sidebarCollapsed ? "justify-center px-0" : "px-7"}`}
+            >
+              <span className="material-icons text-[20px] shrink-0">{item.icon}</span>
+              {!sidebarCollapsed && <span className="text-sm font-semibold">{item.label}</span>}
+            </button>
+          );
+        })}
+      </StudioSidebar>
+
+      <div className={`flex-1 min-w-0 transition-[margin] duration-200 ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[300px]"}`}>
+        <header className="studio-topbar sticky top-0 z-30 flex items-center justify-between px-6 lg:px-12 bg-yt-bg-surface border-b border-yt-bg-overlay">
+          <nav className="hidden md:flex items-center gap-8 text-xl text-yt-text-secondary">
+            <button onClick={onBack} className="hover:text-yt-text-primary pb-3 bg-transparent border-0 cursor-pointer text-xl font-sans">Painel</button>
+            <button className="text-yt-text-primary border-b-2 border-yt-red pb-3 bg-transparent border-0 text-xl font-sans">Banco de Ideias</button>
+            <button className="opacity-50 cursor-not-allowed pb-3 bg-transparent border-0 text-xl font-sans" title="Selecione uma ideia para acessar a área de trabalho" disabled>Área de Trabalho</button>
+          </nav>
+
+          <div className="flex items-center gap-5 ml-auto">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-yt-bg-surface hover:bg-yt-bg-elevated border border-yt-bg-overlay text-yt-text-secondary hover:text-yt-text-primary transition-all duration-200 cursor-pointer"
+              title={theme === "dark" ? "Ativar Modo Claro" : "Ativar Modo Escuro"}
+            >
+              <span className="material-icons text-lg">
+                {theme === "dark" ? "light_mode" : "dark_mode"}
+              </span>
+            </button>
+
+            {/* Profile Avatar + Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setProfileDropdownOpen(!profileDropdownOpen);
+                }}
+                className="flex items-center gap-2.5 p-1 hover:bg-white/5 rounded-full transition-colors cursor-pointer bg-transparent border-0"
+                title="Menu do Usuário"
+              >
+                <div className="w-9 h-9 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-sm font-bold hover:bg-yt-bg-overlay text-yt-text-primary">
+                  {user?.name ? user.name[0].toUpperCase() : channel.name[0]?.toUpperCase() || "C"}
+                </div>
+                <span className="material-icons text-yt-text-secondary text-lg hidden md:inline">arrow_drop_down</span>
+              </button>
+
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-56 bg-yt-bg-surface border border-yt-bg-overlay rounded-[6px] shadow-2xl py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-3 border-b border-yt-bg-overlay text-left">
+                    <p className="text-xs font-extrabold text-yt-text-primary truncate uppercase tracking-wider">{user?.name || "Criador"}</p>
+                    <p className="text-[10px] text-yt-text-secondary truncate mt-0.5 font-sans">{user?.email || "Pro Plan Member"}</p>
+                  </div>
+                  
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        onBack();
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs text-yt-text-primary hover:text-yt-text-primary hover:bg-yt-bg-elevated transition-colors flex items-center gap-2.5 bg-transparent border-0 cursor-pointer font-sans"
+                    >
+                      <span className="material-icons text-sm text-yt-text-secondary">dashboard</span>
+                      Voltar ao Painel
+                    </button>
+                  </div>
+
+                  {onLogout && (
+                    <div className="border-t border-yt-bg-overlay pt-1 mt-1">
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          onLogout();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-yt-red hover:bg-white/5 transition-colors flex items-center gap-2.5 bg-transparent border-0 font-bold cursor-pointer font-sans"
+                      >
+                        <span className="material-icons text-sm text-yt-red">logout</span>
+                        Sair
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="p-6 lg:p-12">
+          <div className="mb-10 flex flex-col xl:flex-row justify-between items-start gap-6">
+            <div className="flex bg-yt-bg-surface border border-yt-bg-overlay p-1 rounded-[5px] shrink-0">
+              {[
+                { key: "list", label: "Lista", icon: "view_list" },
+                { key: "kanban", label: "Kanban", icon: "view_kanban" },
+                { key: "goals", label: "Metas", icon: "flag" },
+                { key: "references", label: "Referências", icon: "link" },
+                { key: "settings", label: "Configurações", icon: "settings" }
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setViewMode(item.key as typeof viewMode)}
+                  className={`px-5 py-3 text-sm font-extrabold uppercase tracking-wider rounded-[3px] flex items-center gap-2 transition-all cursor-pointer border-0 ${
+                    viewMode === item.key ? "bg-yt-red text-white" : "text-yt-text-secondary bg-transparent hover:text-yt-text-primary"
+                  }`}
+                >
+                  <span className="material-icons text-base">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+            {viewMode === "list" ? (
+              <section className="space-y-6">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-2xl font-extrabold text-yt-text-primary">Ideias do canal</h3>
+                    <span className="studio-label text-yt-text-secondary">{filteredIdeas.length} itens</span>
+                  </div>
+                  <p className="text-sm text-yt-text-secondary font-sans">
+                    {selectedFilter === "ALL"
+                      ? "Mostrando todas as ideias do canal."
+                      : `Filtrado por ${STATUS_LABELS[selectedFilter]?.label || selectedFilter}.`}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {filteredIdeas.length === 0 ? (
+                    <div className="yt-card p-8 text-center text-[#8a8a8a] font-sans">
+                      Nenhuma ideia encontrada neste canal.
+                    </div>
+                  ) : (
+                    filteredIdeas.map((idea) => renderIdeaListItem(idea))
+                  )}
+                </div>
+              </section>
+            ) : viewMode === "settings" ? (
+              <section className="yt-card p-7 lg:p-8 max-w-5xl mx-auto">
+                <div className="flex flex-col gap-2 mb-8">
+                  <p className="studio-label text-yt-red">Configurações do canal</p>
+                  <h3 className="text-3xl font-extrabold text-yt-text-primary">Ajuste o posicionamento do seu canal</h3>
+                  <p className="text-sm text-yt-text-secondary max-w-2xl font-sans">
+                    Edite o nicho e os blocos reutilizáveis sem sair da ChannelView.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveChannelSettings} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="space-y-5 lg:col-span-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Nome do canal</label>
+                      <input value={channelDraft.name || ""} onChange={(e) => setChannelDraft({ ...channelDraft, name: e.target.value })} className="studio-input w-full p-3" placeholder="Nome do canal" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Nicho</label>
+                      <input value={channelDraft.niche || ""} onChange={(e) => setChannelDraft({ ...channelDraft, niche: e.target.value })} className="studio-input w-full p-3" placeholder="Ex.: tecnologia, educação, finanças" />
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">CTAs reutilizáveis</label>
+                    <textarea rows={5} value={(channelDraft.ctaTemplates || []).join("\n")} onChange={(e) => setChannelDraft({ ...channelDraft, ctaTemplates: e.target.value.split("\n").map((line) => line.trim()).filter(Boolean) })} className="studio-input w-full p-3" placeholder="Um CTA por linha" />
+                  </div>
+
+                  <div className="lg:col-span-2 space-y-5 pt-2">
+                    <div className="flex items-center gap-3">
+                      <span className="material-icons text-yt-red text-lg">checklist</span>
+                      <div>
+                        <h4 className="text-lg font-bold text-yt-text-primary">Checklists de Produção</h4>
+                        <p className="text-sm text-yt-text-secondary font-sans">Configure os itens obrigatórios por status. O popup aparece quando uma ideia é movida no Kanban.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                      {KANBAN_COLUMNS.map((column) => {
+                        const items = getChecklistItemsForStatus(column.key);
+                        const currentInput = checklistInputs[column.key] || "";
+
+                        return (
+                          <article key={column.key} className="rounded-[8px] border border-yt-bg-overlay bg-yt-bg-primary p-4 space-y-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="material-icons text-yt-red text-[18px]">{column.icon}</span>
+                                <h5 className="text-sm font-extrabold uppercase tracking-wider text-yt-text-primary truncate">{column.label}</h5>
+                              </div>
+                              <span className="studio-label text-yt-text-secondary">{items.length}</span>
+                            </div>
+
+                            <div className="space-y-2">
+                              {items.length === 0 ? (
+                                <div className="rounded-[6px] border border-dashed border-yt-bg-overlay bg-white/[0.02] px-4 py-5 text-center text-xs text-yt-text-disabled font-sans">
+                                  Nenhum item configurado.
+                                </div>
+                              ) : (
+                                items.map((item) => (
+                                  <div key={item} className="flex items-start justify-between gap-3 rounded-[6px] border border-yt-bg-overlay bg-yt-bg-surface px-3 py-2">
+                                    <span className="text-sm text-yt-text-primary leading-6">{item}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleChecklistItemRemove(column.key, item)}
+                                      className="p-1 bg-transparent border-0 text-yt-text-secondary hover:text-yt-red cursor-pointer shrink-0"
+                                      title="Remover item"
+                                    >
+                                      <span className="material-icons text-sm">delete</span>
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <input
+                                value={currentInput}
+                                onChange={(e) => setChecklistInputs((current) => ({ ...current, [column.key]: e.target.value }))}
+                                className="studio-input flex-1 p-3 text-sm"
+                                placeholder="Novo item"
+                              />
+                              <button type="button" onClick={() => handleChecklistItemAdd(column.key)} className="yt-btn-secondary shrink-0">
+                                <span className="material-icons text-sm">add</span>
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2 flex justify-end gap-3 pt-2">
+                    <button type="submit" disabled={savingChannel} className="yt-btn-primary">{savingChannel ? "Salvando..." : "Salvar alterações"}</button>
+                  </div>
+                </form>
+              </section>
+            ) : viewMode === "references" ? (
+              <section className="yt-card p-7 lg:p-8 max-w-5xl mx-auto space-y-8">
+                <div className="flex flex-col gap-2">
+                  <p className="studio-label text-yt-red">Canais de referência</p>
+                  <h3 className="text-3xl font-extrabold text-yt-text-primary">Salve links para buscar ideias</h3>
+                  <p className="text-sm text-yt-text-secondary max-w-2xl font-sans">Guarde canais, playlists, vídeos ou páginas que sirvam de inspiração para este canal.</p>
+                </div>
+
+                <form onSubmit={handleAddChannelReference} className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.6fr] gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Nome da referência</label>
+                    <input value={referenceTitle} onChange={(e) => setReferenceTitle(e.target.value)} className="studio-input w-full p-3" placeholder="Ex.: Canal Tech Vision" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Link</label>
+                    <input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} className="studio-input w-full p-3" placeholder="https://www.youtube.com/@..." />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Observação opcional</label>
+                    <textarea rows={3} value={referenceNote} onChange={(e) => setReferenceNote(e.target.value)} className="studio-input w-full p-3" placeholder="O que observar neste canal?" />
+                  </div>
+
+                  {referenceError && (
+                    <div className="lg:col-span-2 border border-yt-red/40 bg-yt-red/10 text-yt-text-primary p-3 text-sm">{referenceError}</div>
+                  )}
+
+                  <div className="lg:col-span-2 flex justify-end">
+                    <button type="submit" className="yt-btn-primary flex items-center gap-2"><span className="material-icons text-sm">add_link</span>Salvar referência</button>
+                  </div>
+                </form>
+
+                <div className="space-y-3">
+                  {channelReferences.length === 0 ? (
+                    <div className="border border-dashed border-yt-bg-overlay/60 rounded-[12px] bg-white/[0.01] px-6 py-10 text-center">
+                      <span className="material-icons text-4xl text-yt-text-disabled mb-4">link</span>
+                      <h4 className="text-lg font-bold text-yt-text-primary mb-2">Nenhuma referência salva</h4>
+                      <p className="text-sm text-yt-text-secondary font-sans">Adicione canais ou links para consultar quando estiver buscando ideias.</p>
+                    </div>
+                  ) : (
+                    channelReferences.map((reference) => (
+                      <article key={reference.id} className="yt-card p-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <span className="studio-label text-yt-red">Referência</span>
+                            <span className="text-[10px] uppercase tracking-wider text-yt-text-disabled">{new Date(reference.createdAt).toLocaleDateString("pt-BR")}</span>
+                          </div>
+                          <h4 className="text-lg font-bold text-yt-text-primary truncate">{reference.title}</h4>
+                          <a href={reference.url} target="_blank" rel="noreferrer" className="text-sm text-yt-blue break-all hover:text-yt-blue transition-colors">{reference.url}</a>
+                          {reference.note && <p className="text-sm text-yt-text-secondary mt-2 whitespace-pre-line">{reference.note}</p>}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a href={reference.url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-[3px] border border-yt-bg-overlay text-yt-text-primary hover:bg-yt-bg-elevated transition-colors">Abrir</a>
+                          <button type="button" onClick={() => handleRemoveChannelReference(reference.id)} className="px-3 py-2 rounded-[3px] border border-yt-bg-overlay text-yt-red hover:bg-yt-red/10 transition-colors cursor-pointer bg-transparent">Remover</button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
+            ) : viewMode === "kanban" ? (
+              <section className="space-y-6">
+                <div className="flex flex-col gap-2 max-w-3xl">
+                  <p className="studio-label text-yt-red">Kanban</p>
+                  <h3 className="text-3xl font-extrabold text-yt-text-primary">Arraste as ideias entre as etapas</h3>
+                  <p className="text-sm text-yt-text-secondary font-sans">
+                    {selectedFilter === "ALL"
+                      ? "Todas as etapas do pipeline ficam visíveis e as ideias podem ser movidas por drag and drop."
+                      : `Mostrando apenas a etapa ${STATUS_LABELS[selectedFilter]?.label || selectedFilter}.`}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 overflow-x-auto pb-2">
+                  {KANBAN_COLUMNS
+                    .filter((column) => selectedFilter === "ALL" || column.key === selectedFilter)
+                    .map((column) => {
+                      const columnIdeas = filteredIdeas.filter((idea) => idea.status === column.key);
+                      const columnCount = columnIdeas.length;
+
+                      return (
+                        <div
+                          key={column.key}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => handleDrop(e, column.key)}
+                          className="yt-card p-4 min-w-[280px] bg-yt-bg-surface border border-yt-bg-overlay rounded-[8px] flex flex-col gap-4"
+                        >
+                          <div className="flex items-center justify-between gap-3 border-b border-yt-bg-overlay pb-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="material-icons text-yt-red text-[18px]">{column.icon}</span>
+                              <h4 className="text-sm font-extrabold uppercase tracking-wider text-yt-text-primary truncate">{column.label}</h4>
+                            </div>
+                            <span className="studio-label text-yt-text-secondary shrink-0">{columnCount}</span>
+                          </div>
+
+                          <div className="space-y-3 min-h-[180px]">
+                            {columnIdeas.length === 0 ? (
+                              <div className="rounded-[6px] border border-dashed border-yt-bg-overlay bg-white/[0.02] px-4 py-8 text-center text-sm text-yt-text-disabled font-sans">
+                                Arraste uma ideia para esta etapa
+                              </div>
+                            ) : (
+                              columnIdeas.map((idea) => {
+                                return (
+                                  <article
+                                    key={idea.id}
+                                    onClick={() => onSelectIdea(idea)}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, idea.id)}
+                                    className="rounded-[6px] border border-yt-bg-overlay bg-yt-bg-primary p-4 cursor-pointer hover:border-yt-red transition-colors group"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <h5 className="mt-3 text-sm font-bold text-yt-text-primary truncate group-hover:text-yt-red transition-colors">{idea.mainTitle}</h5>
+                                        <p className="mt-2 text-xs text-yt-text-secondary line-clamp-3 font-sans">
+                                          {idea.description || "Sem descrição configurada."}
+                                        </p>
+                                      </div>
+
+                                      {idea.status !== "ARCHIVED" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleArchiveIdea(idea.id, e)}
+                                          className="shrink-0 p-1.5 text-yt-text-disabled hover:text-yt-text-primary transition-colors bg-transparent border-0 cursor-pointer"
+                                          title="Arquivar"
+                                        >
+                                          <span className="material-icons text-sm">archive</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </article>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </section>
+            ) : viewMode === "goals" ? (
+              <section className="yt-card p-7 lg:p-8 max-w-5xl mx-auto">
+                <div className="flex flex-col gap-2">
+                  <p className="studio-label text-yt-red">Metas</p>
+                  <h3 className="text-2xl font-bold text-yt-text-primary">Visão geral de metas</h3>
+                  <p className="text-sm text-yt-text-secondary">Aqui ficam as metas do canal (em desenvolvimento).</p>
+                </div>
+              </section>
+            ) : null}
+        </main>
+      <ChecklistDialog
+        open={checklistDialogOpen}
+        status={pendingChecklistStatus || "IDEA"}
+        statusLabel={pendingChecklistStatus ? STATUS_LABELS[pendingChecklistStatus]?.label || pendingChecklistStatus : "Checklist"}
+        templateItems={pendingChecklistStatus ? getChecklistItemsForStatus(pendingChecklistStatus) : []}
+        onClose={() => {
+          setChecklistDialogOpen(false);
+          setPendingChecklistIdeaId(null);
+          setPendingChecklistStatus(null);
+        }}
+        onConfirm={(completedItems, skippedItems) => {
+          if (!pendingChecklistIdeaId || !pendingChecklistStatus) {
+            return;
+          }
+          void commitIdeaMove(pendingChecklistIdeaId, pendingChecklistStatus, { completed: completedItems, skipped: skippedItems });
+        }}
+        onSkip={() => {
+          if (!pendingChecklistIdeaId || !pendingChecklistStatus) {
+            return;
+          }
+          const items = getChecklistItemsForStatus(pendingChecklistStatus);
+          void commitIdeaMove(pendingChecklistIdeaId, pendingChecklistStatus, { completed: [], skipped: items });
+        }}
+      />
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80" onClick={() => setShowModal(false)} />
+          <form onSubmit={handleCreateIdea} className="yt-card w-full max-w-lg p-7 relative z-10 space-y-5">
+            <h3 className="text-2xl font-extrabold text-yt-text-primary">Nova Ideia</h3>
+            {error && <div className="border border-yt-red/40 bg-yt-red/10 text-yt-text-primary p-3 text-sm">{error}</div>}
+            <input value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="studio-input w-full p-3" placeholder="Título principal" required />
+            <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} className="studio-input w-full p-3" placeholder="Descrição / proposta" />
+            <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} className="studio-input w-full p-3" placeholder="tags, separadas, por vírgula" />
+            <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="studio-input w-full p-3" />
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowModal(false)} className="yt-btn-secondary">Cancelar</button>
+              <button type="submit" disabled={saving} className="yt-btn-primary">{saving ? "Salvando..." : "Criar Ideia"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {recordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80" onClick={() => setRecordModalOpen(false)} />
+          <div className="yt-card w-full max-w-lg p-7 relative z-10 flex flex-col max-h-[85vh]">
+            <div className="flex justify-between items-center mb-4 border-b border-yt-bg-overlay pb-3">
+              <h3 className="text-2xl font-extrabold text-yt-text-primary flex items-center gap-2">
+                <span className="material-icons text-yt-red">video_camera_front</span>
+                Iniciar Gravação
+              </h3>
+              <button onClick={() => setRecordModalOpen(false)} className="text-yt-text-secondary hover:text-yt-text-primary bg-transparent border-0 cursor-pointer">
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+
+            <p className="text-yt-text-secondary text-sm mb-5 font-sans text-left">
+              Selecione um roteiro/ideia abaixo para abrir diretamente na área de gravação do Teleprompter:
+            </p>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[45vh]">
+              {ideas.length === 0 ? (
+                <div className="py-8 text-center text-yt-text-disabled font-sans">
+                  Nenhuma ideia disponível neste canal.
+                </div>
+              ) : (
+                ideas
+                  .filter((idea) => idea.status !== "ARCHIVED" && idea.status !== "PUBLISHED")
+                  .map((idea) => (
+                    <button
+                      key={idea.id}
+                      onClick={() => {
+                        setRecordModalOpen(false);
+                        onSelectIdea(idea, "teleprompter");
+                      }}
+                      className="w-full text-left p-4 bg-yt-bg-surface border border-yt-bg-overlay hover:border-yt-red rounded-[6px] transition-all flex justify-between items-center gap-4 group cursor-pointer"
+                    >
+                      <div className="min-w-0">
+                        <h4 className="text-base font-bold text-yt-text-primary group-hover:text-yt-red truncate transition-colors">{idea.mainTitle}</h4>
+                        <span className="text-[11px] text-yt-text-secondary uppercase tracking-wider font-semibold font-sans">
+                          {STATUS_LABELS[idea.status]?.label || idea.status}
+                        </span>
+                      </div>
+                      <span className="material-icons text-yt-red opacity-0 group-hover:opacity-100 transition-opacity">play_circle_filled</span>
+                    </button>
+                  ))
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-3 border-t border-yt-bg-overlay">
+              <button onClick={() => setRecordModalOpen(false)} className="yt-btn-secondary">Cancelar</button>
+              <button onClick={() => { setRecordModalOpen(false); setShowModal(true); }} className="yt-btn-primary flex items-center gap-2">
+                <span className="material-icons text-sm">add</span>
+                Criar Nova Ideia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+  );
+}
