@@ -209,41 +209,91 @@ export default function ThumbnailSimulator({ idea, alternativeTitles, onAddTitle
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 p-7 min-w-0">
-          <div className="space-y-5 min-w-0">
+        <div className="flex flex-col gap-10 p-7 min-w-0">
+          {/* TOP AREA: Controls */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
             {/* Thumbnails section */}
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 border border-yt-bg-overlay rounded-xl bg-yt-bg-primary/30">
               <div>
-                <p className="text-[10px] uppercase tracking-widest font-bold text-yt-text-disabled">Thumbnails</p>
-                <p className="text-sm text-yt-text-secondary font-sans">Envie até 3 imagens. Elas ficam só no navegador até você recarregar a página.</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-yt-text-disabled flex items-center gap-1.5 mb-1">
+                  <span className="material-icons text-sm text-yt-red">science</span>
+                  Teste A/B de Thumbnails
+                </p>
+                <p className="text-sm text-yt-text-secondary font-sans">
+                  Faça o upload de até 3 miniaturas para comparar como elas performam.
+                </p>
               </div>
 
-              <input type="file" accept="image/*" multiple onChange={handleUpload} className="studio-input w-full p-3" />
+              <input
+                id="thumb-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleUpload}
+                className="hidden"
+              />
 
-              <div className="space-y-3">
-                {thumbnails.length === 0 ? (
-                  <div className="rounded-[10px] border border-dashed border-yt-bg-overlay px-4 py-8 text-center text-sm text-yt-text-disabled font-sans">Nenhuma thumbnail carregada ainda.</div>
-                ) : (
-                  thumbnails.map((thumbnail, index) => (
-                    <div key={thumbnail.id} className="flex items-center gap-3 rounded-[10px] border border-yt-bg-overlay bg-yt-bg-primary p-3">
-                      <div className="w-16 h-10 rounded overflow-hidden shrink-0 bg-yt-bg-elevated">
-                        <img src={thumbnail.url} alt={thumbnail.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-yt-text-primary truncate">Thumbnail {index + 1}</p>
-                        <p className="text-xs text-yt-text-secondary truncate font-sans">{thumbnail.name}</p>
-                      </div>
-                      <button type="button" onClick={() => handleRemoveThumbnail(thumbnail.id)} className="p-2 rounded-full bg-transparent border-0 text-yt-text-secondary hover:text-yt-red cursor-pointer">
-                        <span className="material-icons text-sm">delete</span>
-                      </button>
+              <div className="grid grid-cols-3 gap-3">
+                {[0, 1, 2].map((index) => {
+                  const thumbnail = thumbnails[index];
+                  const label = index === 0 ? "A" : index === 1 ? "B" : "C";
+                  return (
+                    <div
+                      key={thumbnail?.id || `empty-${index}`}
+                      onClick={() => !thumbnail && document.getElementById("thumb-upload")?.click()}
+                      className={`relative group aspect-[16/9] rounded-lg border-2 overflow-hidden flex flex-col items-center justify-center transition-all ${
+                        thumbnail
+                          ? "border-transparent bg-yt-bg-elevated cursor-default"
+                          : "border-dashed border-yt-bg-overlay bg-yt-bg-primary hover:border-yt-text-secondary hover:bg-yt-bg-elevated cursor-pointer"
+                      }`}
+                    >
+                      {thumbnail ? (
+                        <>
+                          <img
+                            src={thumbnail.url}
+                            alt={thumbnail.name}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveThumbnail(thumbnail.id);
+                              }}
+                              className="w-8 h-8 rounded-full bg-red-600/90 text-white flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-transform cursor-pointer border-0"
+                            >
+                              <span className="material-icons text-sm">delete</span>
+                            </button>
+                          </div>
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-bold text-white uppercase backdrop-blur-sm shadow-sm">
+                            Miniatura {label}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-yt-text-disabled flex flex-col items-center">
+                          <span className="material-icons text-xl mb-1 group-hover:text-yt-text-primary transition-colors">add_circle</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wide group-hover:text-yt-text-primary transition-colors">Variante {label}</span>
+                        </div>
+                      )}
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
+              
+              {thumbnails.length < 3 && (
+                <button 
+                  onClick={() => document.getElementById("thumb-upload")?.click()}
+                  className="w-full py-2.5 rounded-md border border-yt-bg-overlay bg-yt-bg-elevated text-xs font-bold uppercase tracking-wider text-yt-text-secondary hover:text-yt-text-primary hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-icons text-[16px]">upload_file</span>
+                  Enviar miniaturas
+                </button>
+              )}
             </div>
 
             {/* ====== TITLES SECTION - ENHANCED ====== */}
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 border border-yt-bg-overlay rounded-xl bg-yt-bg-primary/30">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-icons text-yt-red text-base">title</span>
@@ -279,7 +329,7 @@ export default function ThumbnailSimulator({ idea, alternativeTitles, onAddTitle
               </form>
 
               {/* Title list */}
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 {allTitles.map((title, idx) => {
                   const isMain = title === idea.mainTitle;
                   const isSelected = title === selectedTitle;
@@ -388,8 +438,8 @@ export default function ThumbnailSimulator({ idea, alternativeTitles, onAddTitle
             </div>
           </div>
 
-          {/* Feed Mockup Area */}
-          <div className="space-y-4">
+          {/* BOTTOM AREA: Feed Mockup Area */}
+          <div className="space-y-4 pt-8 border-t border-yt-bg-overlay">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="text-[10px] uppercase tracking-widest font-bold text-yt-text-disabled">Mockup do feed</p>

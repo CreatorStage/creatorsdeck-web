@@ -55,7 +55,12 @@ async function requestJson<T>(url: string, options: RequestInit = {}, auth = tru
     return undefined as T;
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 export const api = {
@@ -107,10 +112,10 @@ export const api = {
     return requestJson<ChannelReferenceLink[]>(`${API_BASE}/api/channels/${channelId}/references`);
   },
 
-  async addChannelReferenceLink(channelId: string, title: string, url: string, note: string): Promise<ChannelReferenceLink> {
+  async addChannelReferenceLink(channelId: string, title: string, url: string, note: string, thumbnailUrl?: string, type?: 'LINK' | 'THUMBNAIL' | 'TITLE'): Promise<ChannelReferenceLink> {
     return requestJson<ChannelReferenceLink>(`${API_BASE}/api/channels/${channelId}/references`, {
       method: "POST",
-      body: JSON.stringify({ title, url, note }),
+      body: JSON.stringify({ title, url, note, thumbnailUrl, type }),
     });
   },
 
@@ -256,6 +261,12 @@ export const api = {
   async restoreScriptVersion(ideaId: string, versionId: string): Promise<VideoScript> {
     return requestJson<VideoScript>(`${API_BASE}/api/ideas/${ideaId}/script/versions/${versionId}/restore`, {
       method: "POST",
+    });
+  },
+
+  async deleteScriptVersion(ideaId: string, versionId: string): Promise<void> {
+    return requestJson<void>(`${API_BASE}/api/ideas/${ideaId}/script/versions/${versionId}`, {
+      method: "DELETE",
     });
   },
 

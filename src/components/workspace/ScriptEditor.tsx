@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { ScriptVersion } from "../../types";
 import { ScriptBlock } from "./scriptUtils";
 import ScriptBlockCard from "./ScriptBlockCard";
@@ -24,13 +24,14 @@ interface ScriptEditorProps {
 
   // --- Continuous mode ---
   editorRef: React.RefObject<HTMLDivElement | null>;
-  onEditorInput: (e: React.FormEvent<HTMLDivElement>) => void;
+  onEditorInput: (e: React.FormEvent<HTMLDivElement> | React.ChangeEvent<HTMLTextAreaElement>) => void;
   onInsertQuickBlock: (type: "hook" | "dev" | "final" | "cta") => void;
   ctaTemplates: string[];
   scriptVersions: ScriptVersion[];
   loadingVersions: boolean;
-  onCreateVersion: () => void;
+  onCreateVersion: (label: string) => void;
   onRestoreVersion: (versionId: string) => void;
+  onDeleteVersion: (versionId: string) => void;
 
   // --- Voice to text ---
   onVoiceTranscript: (text: string) => void;
@@ -38,6 +39,7 @@ interface ScriptEditorProps {
   // --- Shared stats ---
   wordCount: number;
   estimatedDuration: number;
+  scriptContent: string;
 }
 
 const ScriptEditor: React.FC<ScriptEditorProps> = ({
@@ -63,10 +65,22 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   loadingVersions,
   onCreateVersion,
   onRestoreVersion,
+  onDeleteVersion,
   onVoiceTranscript,
   wordCount,
   estimatedDuration,
+  scriptContent,
 }) => {
+  const [versionLabel, setVersionLabel] = useState("");
+  const [versionToDelete, setVersionToDelete] = useState<ScriptVersion | null>(null);
+
+  const handleSaveVersion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!versionLabel.trim()) return;
+    onCreateVersion(versionLabel.trim());
+    setVersionLabel("");
+  };
+
   return (
     <div className="w-full space-y-4 p-7">
 
@@ -87,7 +101,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
           <VoiceRecorder onTranscriptReady={onVoiceTranscript} />
           <button
             type="button"
-            onClick={onCreateVersion}
+            onClick={() => onCreateVersion("")}
             className="px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-sm flex items-center gap-1 transition-all cursor-pointer bg-yt-bg-elevated hover:bg-yt-bg-overlay text-yt-text-primary border border-yt-bg-overlay"
           >
             <span className="material-icons text-sm">history</span>
@@ -265,53 +279,117 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
         <div className="space-y-4">
           {/* Quick-insert toolbar */}
           <div className="flex flex-wrap items-center gap-2 p-3 bg-yt-bg-primary/50 border border-yt-bg-overlay rounded-sm select-none">
-            <span className="text-[10px] font-mono text-yt-text-secondary uppercase tracking-wider">Inserir Bloco:</span>
+            <span className="text-[10px] font-mono text-yt-text-secondary uppercase tracking-wider">Inserir Tag:</span>
             <button
               type="button"
-              onClick={() => onInsertQuickBlock("hook")}
+              onClick={() => {
+                if (editorRef.current) {
+                  const el = editorRef.current as unknown as HTMLTextAreaElement;
+                  const start = el.selectionStart;
+                  const val = el.value;
+                  const newText = val.slice(0, start) + "\n\n[GANCHO]\nSeu gancho aqui...\n" + val.slice(start);
+                  onEditorInput({ currentTarget: { value: newText } } as any);
+                } else {
+                  onEditorInput({ currentTarget: { value: scriptContent + "\n\n[GANCHO]\nSeu gancho aqui...\n" } } as any);
+                }
+              }}
               className="px-2.5 py-1 bg-[#ff3b30]/15 hover:bg-[#ff3b30]/25 text-[#ff3b30] text-[10px] font-mono font-semibold rounded-full uppercase tracking-wider cursor-pointer"
             >
               + Gancho
             </button>
             <button
               type="button"
-              onClick={() => onInsertQuickBlock("dev")}
+              onClick={() => {
+                if (editorRef.current) {
+                  const el = editorRef.current as unknown as HTMLTextAreaElement;
+                  const start = el.selectionStart;
+                  const val = el.value;
+                  const newText = val.slice(0, start) + "\n\n[CONTEÚDO]\nSeu conteúdo aqui...\n" + val.slice(start);
+                  onEditorInput({ currentTarget: { value: newText } } as any);
+                } else {
+                  onEditorInput({ currentTarget: { value: scriptContent + "\n\n[CONTEÚDO]\nSeu conteúdo aqui...\n" } } as any);
+                }
+              }}
               className="px-2.5 py-1 bg-[#3ea6ff]/15 hover:bg-[#3ea6ff]/25 text-[#3ea6ff] text-[10px] font-mono font-semibold rounded-full uppercase tracking-wider cursor-pointer"
             >
               + Conteúdo
             </button>
             <button
               type="button"
-              onClick={() => onInsertQuickBlock("final")}
+              onClick={() => {
+                if (editorRef.current) {
+                  const el = editorRef.current as unknown as HTMLTextAreaElement;
+                  const start = el.selectionStart;
+                  const val = el.value;
+                  const newText = val.slice(0, start) + "\n\n[CONCLUSÃO]\nSua conclusão aqui...\n" + val.slice(start);
+                  onEditorInput({ currentTarget: { value: newText } } as any);
+                } else {
+                  onEditorInput({ currentTarget: { value: scriptContent + "\n\n[CONCLUSÃO]\nSua conclusão aqui...\n" } } as any);
+                }
+              }}
               className="px-2.5 py-1 bg-[#ff9500]/15 hover:bg-[#ff9500]/25 text-[#ff9500] text-[10px] font-mono font-semibold rounded-full uppercase tracking-wider cursor-pointer"
             >
               + Conclusão
             </button>
             <button
               type="button"
-              onClick={() => onInsertQuickBlock("cta")}
+              onClick={() => {
+                if (editorRef.current) {
+                  const el = editorRef.current as unknown as HTMLTextAreaElement;
+                  const start = el.selectionStart;
+                  const val = el.value;
+                  const newText = val.slice(0, start) + "\n\n[CTA]\nSua CTA aqui...\n" + val.slice(start);
+                  onEditorInput({ currentTarget: { value: newText } } as any);
+                } else {
+                  onEditorInput({ currentTarget: { value: scriptContent + "\n\n[CTA]\nSua CTA aqui...\n" } } as any);
+                }
+              }}
               className="px-2.5 py-1 bg-[#4cd964]/15 hover:bg-[#4cd964]/25 text-[#4cd964] text-[10px] font-mono font-semibold rounded-full uppercase tracking-wider cursor-pointer"
             >
               + CTA
             </button>
 
             <div className="w-[1px] h-4 bg-yt-bg-overlay mx-1" />
+            <button
+              type="button"
+              onClick={() => {
+                let formatted = scriptContent;
+                // 1. Normalize spaces (remove consecutive spaces)
+                formatted = formatted.replace(/[^\S\r\n]+/g, " ");
+                // 2. Ensure spaces after punctuation marks if missing
+                formatted = formatted.replace(/([.,?!])(?=[^\s"’\])])/g, "$1 ");
+                // 3. Break long walls of text into paragraphs:
+                // Replaces ". ", "? ", "! " followed by an uppercase letter with a double newline
+                formatted = formatted.replace(/([.?!])\s+(?=[A-ZÀ-Ÿ])/g, "$1\n\n");
+                // 4. Ensure tags are on their own lines
+                formatted = formatted.replace(/(?<!\n)(?<!^)(\[[A-ZÊÓÍÁÂÃÕ]+\])/g, "\n\n$1");
+                // 5. Ensure max 2 consecutive newlines
+                formatted = formatted.replace(/\n{3,}/g, "\n\n");
+                // 6. Trim each line
+                formatted = formatted.split("\n").map(line => line.trim()).join("\n");
+                
+                onEditorInput({ currentTarget: { value: formatted } } as any);
+              }}
+              className="px-2.5 py-1 bg-yt-bg-overlay hover:bg-yt-bg-elevated text-yt-text-primary text-[10px] font-mono font-semibold rounded-full uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+              title="Formatar Texto (quebrar em parágrafos e organizar)"
+            >
+              <span className="material-icons text-[14px]">auto_fix_high</span>
+              Formatar
+            </button>
+            <div className="w-[1px] h-4 bg-yt-bg-overlay mx-1" />
             <VoiceRecorder onTranscriptReady={onVoiceTranscript} />
           </div>
 
-          {/* ContentEditable rich text area */}
+          {/* Plain Text Markdown Area */}
           <div className="relative">
-            <div
-              ref={editorRef}
-              contentEditable={true}
-              onInput={onEditorInput}
+            <textarea
+              ref={editorRef as any}
+              value={scriptContent}
+              onChange={onEditorInput}
               className="w-full min-h-[400px] max-h-[600px] overflow-y-auto p-5 bg-yt-bg-primary border border-yt-bg-overlay text-yt-text-primary rounded-sm text-lg focus:outline-none focus:border-yt-red leading-relaxed font-sans"
-              style={{ outline: "none" }}
+              style={{ outline: "none", resize: "vertical" }}
+              placeholder="Escreva o roteiro oficial do seu vídeo aqui usando Markdown. Use tags como [GANCHO], [CONTEÚDO], [CONCLUSÃO] para separar os blocos."
             />
-            {/* Placeholder — rendered only when editor is empty via CSS :empty trick isn't reliable so we use data attr */}
-            <div className="absolute top-5 left-5 text-yt-text-disabled pointer-events-none select-none text-base empty-placeholder">
-              Escreva o roteiro oficial do seu vídeo aqui. Destaque palavras importantes, adicione ganchos ou altere as cores de fundo para leitura dinâmica...
-            </div>
           </div>
         </div>
       )}
@@ -352,6 +430,26 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
           </span>
         </div>
 
+        {/* Create new version form */}
+        <form onSubmit={handleSaveVersion} className="flex gap-2 mb-4">
+           <input 
+             type="text" 
+             placeholder="Nome da versão (ex: V2 - Final)" 
+             value={versionLabel} 
+             onChange={(e) => setVersionLabel(e.target.value)} 
+             className="studio-input text-sm flex-1 px-3 py-2" 
+             maxLength={40} 
+           />
+           <button 
+             type="submit" 
+             disabled={!versionLabel.trim() || loadingVersions} 
+             className="yt-btn-secondary whitespace-nowrap text-xs flex items-center gap-1.5 disabled:opacity-50"
+           >
+              <span className="material-icons text-sm">save</span>
+              Salvar Versão
+           </button>
+        </form>
+
         {loadingVersions ? (
           <div className="py-8 text-center text-yt-text-secondary text-xs uppercase tracking-wider">
             Carregando histórico...
@@ -370,18 +468,75 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                     {new Date(version.createdAt).toLocaleString("pt-BR")} - {version.wordCount} palavras
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onRestoreVersion(version.id)}
-                  className="shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-yt-red hover:bg-yt-red/10 border border-yt-red/30 rounded-sm"
-                >
-                  Restaurar
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onRestoreVersion(version.id)}
+                    className="shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-yt-red hover:bg-yt-red/10 border border-yt-red/30 rounded-sm"
+                  >
+                    Restaurar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (scriptVersions.length === 1) {
+                        setVersionToDelete(version);
+                      } else {
+                        if (window.confirm("Tem certeza que deseja excluir esta versão?")) {
+                          onDeleteVersion(version.id);
+                        }
+                      }
+                    }}
+                    className="shrink-0 p-1.5 text-yt-text-secondary hover:text-yt-red hover:bg-yt-red/10 rounded-sm transition-colors"
+                    title="Excluir versão"
+                  >
+                    <span className="material-icons text-[16px]">delete</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </section>
+
+      {/* Delete Confirmation Modal */}
+      {versionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-yt-bg-elevated border border-yt-bg-overlay p-6 rounded-md w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-bold text-yt-text-primary flex items-center gap-2 mb-3">
+              <span className="material-icons text-yt-red">warning</span>
+              Excluir Versão
+            </h3>
+            <p className="text-sm text-yt-text-secondary mb-1">
+              Tem certeza que deseja excluir permanentemente a versão <strong>"{versionToDelete.label}"</strong>?
+            </p>
+            {scriptVersions.length === 1 && (
+              <p className="text-xs text-yt-red mb-4 mt-2 bg-yt-red/10 p-2 rounded-sm border border-yt-red/20">
+                Esta é a <strong>última versão</strong> salva. Se você apagá-la, não haverá pontos de restauração.
+              </p>
+            )}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setVersionToDelete(null)}
+                className="px-4 py-2 text-sm font-semibold text-yt-text-primary hover:bg-yt-bg-overlay rounded-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteVersion(versionToDelete.id);
+                  setVersionToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-semibold bg-yt-red text-white hover:bg-red-600 rounded-sm transition-colors"
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

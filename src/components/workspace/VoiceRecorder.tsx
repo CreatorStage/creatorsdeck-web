@@ -114,6 +114,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const lastFinalTimestampRef = useRef<number>(0);
   const segmentsRef = useRef<string[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -138,10 +139,41 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
       source.connect(analyser);
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const historyLength = 60;
+      const history = new Array(historyLength).fill(0);
+
       const tick = () => {
         analyser.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        setAudioLevel(Math.min(avg / 128, 1));
+        const normalizedLevel = Math.min(avg / 128, 1);
+        
+        history.push(normalizedLevel);
+        history.shift();
+
+        if (canvasRef.current) {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
+            
+            const barWidth = width / historyLength;
+            for (let i = 0; i < historyLength; i++) {
+              const h = Math.max(4, history[i] * height * 0.8); // min 4px height, max 80% canvas height
+              const x = i * barWidth;
+              const y = (height - h) / 2; // Center vertically
+              
+              ctx.fillStyle = i === historyLength - 1 ? "#ef4444" : "rgba(239, 68, 68, 0.6)";
+              
+              ctx.beginPath();
+              ctx.roundRect(x + 1, y, Math.max(2, barWidth - 2), h, 4);
+              ctx.fill();
+            }
+          }
+        }
+        
+        setAudioLevel(normalizedLevel);
         animationFrameRef.current = requestAnimationFrame(tick);
       };
       tick();
@@ -358,26 +390,16 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {isRecording ? (
-                <>
-                  {/* Audio level bars */}
-                  <div className="flex items-end gap-[2px] h-4">
-                    {[0.2, 0.5, 0.8, 0.6, 0.3, 0.7, 0.4].map((base, i) => (
-                      <div
-                        key={i}
-                        className="w-[3px] rounded-full bg-red-400 transition-all duration-75"
-                        style={{
-                          height: `${Math.max(3, (base * 0.4 + audioLevel * 0.6) * 16)}px`,
-                          opacity: 0.5 + audioLevel * 0.5,
-                        }}
-                      />
-                    ))}
+                <div className="flex items-center gap-2">
+                  <div className="w-[120px] h-8 flex items-center bg-red-500/5 rounded-full px-2 border border-red-500/10">
+                    <canvas ref={canvasRef} width={100} height={24} className="w-full h-full" />
                   </div>
-                  <span className="text-[11px] font-semibold text-red-400 uppercase tracking-wider">
+                  <span className="text-[11px] font-semibold text-red-400 uppercase tracking-wider animate-pulse">
                     Ouvindo...
                   </span>
-                </>
+                </div>
               ) : (
                 <>
                   <span className="material-icons text-sm text-[#66bb6a]">check_circle</span>

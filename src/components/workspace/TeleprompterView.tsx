@@ -40,8 +40,24 @@ export default function TeleprompterView({
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const tick = () => {
-      container.scrollTop += speed * 0.45;
+    let lastTime = performance.now();
+    let exactScrollTop = container.scrollTop;
+
+    const tick = (time: number) => {
+      const dt = time - lastTime;
+      lastTime = time;
+
+      // Convert speed to pixels per millisecond (speed * 0.45 per 16.6ms is roughly speed * 0.027)
+      const speedPerMs = speed * 0.027;
+      exactScrollTop += speedPerMs * dt;
+      
+      container.scrollTop = exactScrollTop;
+
+      // Resync accumulator if user manually scrolls
+      if (Math.abs(container.scrollTop - exactScrollTop) > 2) {
+        exactScrollTop = container.scrollTop;
+      }
+
       scrollTimerRef.current = requestAnimationFrame(tick);
     };
 
@@ -56,9 +72,19 @@ export default function TeleprompterView({
       return "O seu roteiro está vazio atualmente.<br/><br/>Escreva algo na aba <strong>Roteiro</strong> primeiro!";
     }
 
-    if (theme === "dark") return content;
+    let processed = content;
 
-    return content
+    // Break lines after end of sentences for better teleprompter readability.
+    // We match a period, exclamation, or question mark, followed by spaces, followed by a Capital letter.
+    // We use capturing groups to keep the punctuation and the capital letter.
+    processed = processed.replace(/([.?!])\s+(?=[A-ZÀ-ÖØ-Þ])/g, "$1<br/><br/>");
+
+    // Add more spacing between blocks for the teleprompter view
+    processed = processed.replace(/margin:\s*12px\s*0/g, "margin: 32px 0");
+
+    if (theme === "dark") return processed;
+
+    return processed
       .replace(/color:\s*#fef2f2/g, "color: #1a0505")
       .replace(/color:\s*#eff6ff/g, "color: #04102e")
       .replace(/color:\s*#fffbeb/g, "color: #1c1000")
@@ -77,7 +103,7 @@ export default function TeleprompterView({
   return (
     <div className={`${isFullscreen ? "fixed inset-0 z-[1000]" : "relative w-full h-full"} ${bgColor} ${textColor} flex flex-col`}>
       {/* ─── CONTROLS BAR ─── */}
-      <div className={`fixed bottom-3 left-1/2 z-[1002] ${dockWidth} -translate-x-1/2 rounded-2xl border ${controlBg} ${controlBorder} px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl md:px-6 lg:px-8 flex flex-nowrap items-center justify-center gap-4 overflow-x-auto transition-[width] duration-200`}>
+      <div className={`fixed bottom-3 left-1/2 z-[1002] ${dockWidth} -translate-x-1/2 rounded-2xl border ${controlBg} ${controlBorder} px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl md:px-6 lg:px-8 flex flex-nowrap items-center justify-center gap-4 overflow-x-auto transition-[width] duration-200 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
 
          
         {/* Gravar / Pausar */}
@@ -139,14 +165,6 @@ export default function TeleprompterView({
           <span className="material-icons text-base">{isFullscreen ? "close_fullscreen" : "fullscreen"}</span>
           <span className="hidden sm:inline">{isFullscreen ? "Reduzir" : "Tela Cheia"}</span>
         </button>
-
-        {/* Recording indicator */}
-        {isScrolling && (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#ff5045] animate-pulse"></span>
-            <span className="text-[10px] font-bold text-[#ff5045] uppercase tracking-widest">Gravando</span>
-          </div>
-        )}
       </div>
 
       {/* ─── FOCUS LINE ─── */}
@@ -165,12 +183,15 @@ export default function TeleprompterView({
         <div
           ref={scrollContainerRef}
           onClick={onToggleScroll}
-          className="h-full overflow-y-auto cursor-pointer py-16 scroll-smooth"
+          className="h-full overflow-y-auto cursor-pointer"
           style={{ scrollbarWidth: "none" }}
         >
+          {/* Spacer to push first line to the middle reading line */}
+          <div className="h-[50vh]" />
+          
           <div
-            className="mx-auto max-w-5xl text-center font-extrabold leading-tight select-none"
-            style={{ fontSize: `${fontSize}px`, lineHeight: 1.45 }}
+            className="mx-auto w-[92%] max-w-[1600px] text-center font-extrabold leading-tight select-none"
+            style={{ fontSize: `${fontSize}px`, lineHeight: 1.45, transform: "translateZ(0)", willChange: "transform" }}
             dangerouslySetInnerHTML={{ __html: getProcessedHtml() }}
           />
           <div className="h-[70vh]" />

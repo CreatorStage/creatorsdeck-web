@@ -12,12 +12,15 @@ import ReferenceManager from "./workspace/ReferenceManager";
 import NoteManager from "./workspace/NoteManager"; 
 import ScriptEditor from "./workspace/ScriptEditor"; 
 import TeleprompterView from "./workspace/TeleprompterView"; 
+import AudioStudio from "./workspace/AudioStudio"; 
 
 // Types and Utils
 import {
   ScriptBlock,
   parseHtmlToBlocks,
   joinBlocksToHtml,
+  blocksToMarkdown,
+  markdownToBlocks,
   getYouTubeEmbedUrl
 } from "./workspace/scriptUtils";
 
@@ -29,7 +32,8 @@ interface VideoIdeaWorkspaceProps {
   channel?: Channel | null;
   onGoToDashboard?: () => void;
   onLogout?: () => void;
-  initialTab?: "overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter";
+  initialTab?: "overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter" | "audio";
+  onTabChange?: (tab: "overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter" | "audio") => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
 }
@@ -55,17 +59,24 @@ export default function VideoIdeaWorkspace({
   onGoToDashboard,
   onLogout,
   initialTab,
+  onTabChange,
   theme,
   toggleTheme
 }: VideoIdeaWorkspaceProps) {
   const [idea, setIdea] = useState<VideoIdea>(initialIdea);
-  const [currentTab, setCurrentTab] = useState<"overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter">(initialTab || "overview");
+  const [currentTab, setCurrentTab] = useState<"overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter" | "audio">(initialTab || "overview");
 
   useEffect(() => {
     if (initialTab) {
       setCurrentTab(initialTab);
     }
   }, [initialTab, idea.id]);
+
+  useEffect(() => {
+    if (onTabChange) {
+      onTabChange(currentTab);
+    }
+  }, [currentTab, onTabChange]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -139,6 +150,35 @@ export default function VideoIdeaWorkspace({
   const overviewTimeoutRef = useRef<any>(null);
   const notesTimeoutRef = useRef<any>(null);
   const scriptTimeoutRef = useRef<any>(null);
+  const scriptContentRef = useRef<string>(scriptContent);
+
+  useEffect(() => {
+    scriptContentRef.current = scriptContent;
+  }, [scriptContent]);
+
+  const executeScriptSave = async (val: string) => {
+    try {
+      if (scriptTimeoutRef.current) clearTimeout(scriptTimeoutRef.current);
+      triggerSaveState("Salvando...");
+      const calculatedSecs = Math.ceil(calculateWords(val) / 2.6);
+      await api.saveScript(idea.id, val, "RICH_TEXT", calculateWords(val), calculatedSecs);
+      triggerSaveState("Salvo");
+    } catch (err) {
+      console.error(err);
+      triggerSaveState("Alterações pendentes");
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        executeScriptSave(scriptContentRef.current);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [idea.id]);
 
   // Initial downloads
   useEffect(() => {
@@ -518,10 +558,15 @@ export default function VideoIdeaWorkspace({
     }
   };
 
-  const handleCreateScriptVersion = async () => {
+  const handleCreateScriptVersion = async (label?: string | unknown) => {
     try {
       triggerSaveState("Salvando...");
-      const created = await api.createScriptVersion(idea.id, `Snapshot ${new Date().toLocaleString("pt-BR")}`);
+      let finalLabel = `Snapshot ${new Date().toLocaleString("pt-BR")}`;
+      if (typeof label === "string" && label.trim() !== "") {
+        finalLabel = label.trim();
+      }
+      
+      const created = await api.createScriptVersion(idea.id, finalLabel);
       setScriptVersions((prev) => [created, ...prev]);
       triggerSaveState("Salvo");
     } catch (err) {
@@ -548,6 +593,15 @@ export default function VideoIdeaWorkspace({
     } catch (err) {
       console.error(err);
       triggerSaveState("Alterações pendentes");
+    }
+  };
+
+  const handleDeleteScriptVersion = async (versionId: string) => {
+    try {
+      await api.deleteScriptVersion(idea.id, versionId);
+      setScriptVersions((prev) => prev.filter((v) => v.id !== versionId));
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -622,8 +676,9 @@ export default function VideoIdeaWorkspace({
     savedEditorRangeRef.current = null;
   };
 
-  const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-    const val = e.currentTarget.innerHTML;
+  const handleEditorInput = (e: React.FormEvent<HTMLDivElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget as any;
+    const val = 'value' in target ? target.value : target.innerHTML;
     setScriptContent(val);
     const words = calculateWords(val);
     setWordCount(words);
@@ -635,17 +690,9 @@ export default function VideoIdeaWorkspace({
     triggerSaveState("Alterações pendentes");
     if (scriptTimeoutRef.current) clearTimeout(scriptTimeoutRef.current);
 
-    scriptTimeoutRef.current = setTimeout(async () => {
-      try {
-        triggerSaveState("Salvando...");
-        const calculatedSecs = Math.ceil(calculateWords(val) / 2.6);
-        await api.saveScript(idea.id, val, "RICH_TEXT", calculateWords(val), calculatedSecs);
-        triggerSaveState("Salvo");
-      } catch (err) {
-        console.error(err);
-        triggerSaveState("Alterações pendentes");
-      }
-    }, 2500);
+    scriptTimeoutRef.current = setTimeout(() => {
+      executeScriptSave(val);
+    }, 300000); // 5 minutos
   };
 
   const insertQuickBlock = (blockType: "hook" | "dev" | "final" | "cta") => {
@@ -880,12 +927,19 @@ export default function VideoIdeaWorkspace({
 
   const handleToggleMode = (mode: "continuous" | "blocks") => {
     if (mode === "blocks") {
-      setBlocks(parseHtmlToBlocks(scriptContent));
+      // Assuming scriptContent is Markdown when coming from continuous mode
+      // If it contains raw HTML instead (e.g. from an old save), markdownToBlocks handles basic HTML too,
+      // but if it's purely old HTML, parseHtmlToBlocks would be better. Let's try parsing it as markdown first.
+      if (scriptContent.includes("<div") && !scriptContent.includes("[GANCHO]")) {
+         setBlocks(parseHtmlToBlocks(scriptContent));
+      } else {
+         setBlocks(markdownToBlocks(scriptContent));
+      }
     } else {
-      const combined = joinBlocksToHtml(blocks);
+      const combined = blocksToMarkdown(blocks);
       setScriptContent(combined);
       if (editorRef.current) {
-        editorRef.current.innerHTML = combined;
+        (editorRef.current as unknown as HTMLTextAreaElement).value = combined;
       }
     }
     setEditorMode(mode);
@@ -1078,7 +1132,8 @@ export default function VideoIdeaWorkspace({
             { id: "references", label: "Referências", icon: "link" },
             { id: "notes", label: "Anotações", icon: "sticky_note_2" },
             { id: "script", label: "Roteiro", icon: "article" },
-            { id: "teleprompter", label: "Teleprompter", icon: "video_camera_front" }
+            { id: "teleprompter", label: "Teleprompter", icon: "video_camera_front" },
+            { id: "audio", label: "Estúdio de Áudio", icon: "graphic_eq" }
           ]}
           onGoToDashboard={onGoToDashboard}
           onLogout={onLogout}
@@ -1142,6 +1197,10 @@ export default function VideoIdeaWorkspace({
             />
           )}
 
+          {currentTab === "audio" && (
+            <AudioStudio />
+          )}
+
           {currentTab === "references" && (
             <ReferenceManager
               references={references}
@@ -1200,17 +1259,20 @@ export default function VideoIdeaWorkspace({
               loadingVersions={loadingVersions}
               onCreateVersion={handleCreateScriptVersion}
               onRestoreVersion={handleRestoreScriptVersion}
+              onDeleteVersion={handleDeleteScriptVersion}
               onVoiceTranscript={handleVoiceTranscript}
+              scriptContent={scriptContent}
             />
           )}
 
           {currentTab === "teleprompter" && (
             <TeleprompterView
-              content={scriptContent}
+              content={editorMode === "continuous" ? joinBlocksToHtml(markdownToBlocks(scriptContent)) : scriptContent}
               fontSize={promptFontSize}
               speed={promptSpeed}
               isScrolling={isScrolling}
               theme={theme}
+
               onToggleScroll={handleScreenClickToggle}
               onReset={resetAutoscrollPosition}
               onSpeedChange={setPromptSpeed}

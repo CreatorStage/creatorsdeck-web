@@ -67,6 +67,8 @@ export interface ChannelReferenceLink {
   title: string;
   url: string;
   note?: string;
+  thumbnailUrl?: string;
+  type?: 'LINK' | 'THUMBNAIL' | 'TITLE';
   createdAt: string;
 }
 

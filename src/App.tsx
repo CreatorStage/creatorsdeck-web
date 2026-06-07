@@ -10,9 +10,17 @@ import { api, setUnauthorizedHandler } from "./api";
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [selectedIdea, setSelectedIdea] = useState<VideoIdea | null>(null);
-  const [selectedIdeaTab, setSelectedIdeaTab] = useState<"overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter">("overview");
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(() => {
+    const saved = localStorage.getItem("creator_selected_channel");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [selectedIdea, setSelectedIdea] = useState<VideoIdea | null>(() => {
+    const saved = localStorage.getItem("creator_selected_idea");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [selectedIdeaTab, setSelectedIdeaTab] = useState<"overview" | "description" | "simulator" | "references" | "notes" | "script" | "teleprompter" | "audio">(() => {
+    return (localStorage.getItem("creator_selected_idea_tab") as any) || "overview";
+  });
   const [authMode, setAuthMode] = useState<"landing" | "login" | "signup">("landing");
 
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -28,6 +36,21 @@ export default function App() {
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
+
+  useEffect(() => {
+    if (selectedChannel) localStorage.setItem("creator_selected_channel", JSON.stringify(selectedChannel));
+    else localStorage.removeItem("creator_selected_channel");
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    if (selectedIdea) localStorage.setItem("creator_selected_idea", JSON.stringify(selectedIdea));
+    else localStorage.removeItem("creator_selected_idea");
+  }, [selectedIdea]);
+
+  useEffect(() => {
+    if (selectedIdeaTab) localStorage.setItem("creator_selected_idea_tab", selectedIdeaTab);
+    else localStorage.removeItem("creator_selected_idea_tab");
+  }, [selectedIdeaTab]);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -121,6 +144,7 @@ export default function App() {
         }}
         onLogout={handleLogout}
         initialTab={selectedIdeaTab}
+        onTabChange={(tab) => setSelectedIdeaTab(tab)}
         theme={theme}
         toggleTheme={toggleTheme}
       />
