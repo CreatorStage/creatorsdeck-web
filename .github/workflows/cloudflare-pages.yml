@@ -35,4 +35,4 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: 'yt-plataform-front'
           directory: 'dist'
-          gitBranch: ${{ github.ref_name }}
+          branch: ${{ github.ref_name }}
