@@ -144,7 +144,7 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
                 <span className="w-8 h-8 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-xs font-bold shrink-0 text-yt-text-primary">{initials}</span>
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate text-yt-text-primary">{user?.name || "Criador"}</p>
-                  <p className="text-[10px] text-yt-text-disabled uppercase tracking-wider font-sans">{user?.email || "Plano Pro"}</p>
+                  <p className="text-[10px] text-yt-text-disabled tracking-wider font-sans truncate">{user?.username ? `@${user.username}` : "Open Source"}</p>
                 </div>
               </div>
             )}

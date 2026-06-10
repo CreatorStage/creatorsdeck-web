@@ -10,7 +10,7 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ onSuccess, initialMode = "login", onBack }: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(initialMode === "login");
-  const [email, setEmail] = useState("rodrigmatheus19@gmail.com");
+  const [username, setUsername] = useState("rodrigmatheus19");
   const [password, setPassword] = useState("password123");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,16 +29,15 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
       if (!name || name.trim().length < 2) {
         errors.name = "O nome deve ter no mínimo 2 letras.";
       }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!email || !emailRegex.test(email)) {
-        errors.email = "O e-mail deve ser válido.";
+      if (!username || username.trim().length < 3) {
+        errors.username = "O usuário deve ter no mínimo 3 caracteres.";
       }
       if (!password || password.length < 6) {
         errors.password = "A senha deve ter no mínimo 6 caracteres.";
       }
     } else {
-      if (!email || !email.trim()) {
-        errors.email = "O e-mail não pode ser em branco.";
+      if (!username || !username.trim()) {
+        errors.username = "O usuário não pode ser em branco.";
       }
       if (!password || !password.trim()) {
         errors.password = "A senha não pode ser em branco.";
@@ -53,10 +52,10 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
 
     try {
       if (isLogin) {
-        const data = await api.login(email, password);
+        const data = await api.login(username, password);
         onSuccess(data.token, data.user);
       } else {
-        const data = await api.register(name, email, password);
+        const data = await api.register(name, username, password);
         onSuccess(data.token, data.user);
       }
     } catch (err: any) {
@@ -71,7 +70,7 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
   };
 
   const fillDemoCredentials = () => {
-    setEmail("rodrigmatheus19@gmail.com");
+    setUsername("rodrigmatheus19");
     setPassword("password123");
     setIsLogin(true);
     setError(null);
@@ -144,24 +143,24 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
 
             <div>
               <label className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider mb-2">
-                Endereço de E-mail
+                Nome de Usuário
               </label>
               <div className="relative">
-                <span className="material-icons absolute left-3 top-2 text-[#717171] text-lg">mail_outline</span>
+                <span className="material-icons absolute left-3 top-2 text-[#717171] text-lg">person_outline</span>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
+                  value={username}
                   onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: "" }));
+                    setUsername(e.target.value);
+                    if (fieldErrors.username) setFieldErrors(prev => ({ ...prev, username: "" }));
                   }}
-                  placeholder="seu@email.com"
+                  placeholder="seu_usuario"
                   className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-3 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
                 />
               </div>
-              {fieldErrors.email && (
-                <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.email}</p>
+              {fieldErrors.username && (
+                <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.username}</p>
               )}
             </div>
 
@@ -224,7 +223,7 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
               }}
               className="text-xs text-[#ff5045] hover:underline"
             >
-              {isLogin ? "Não possui conta? Cadastre-se gratuito" : "Já possui conta? Fazer login"}
+              {isLogin ? "Não possui conta? Cadastre-se" : "Já possui conta? Fazer login"}
             </button>
           </div>
 

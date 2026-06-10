@@ -5,14 +5,13 @@
 export interface User {
   id: string;
   name: string;
-  email: string;
+  username: string;
   createdAt: string;
 }
 
 export interface UserSettingsResponse {
   userId: string;
   theme: string;
-  emailNotifications: boolean;
   preferredLanguage: string;
   profileBio?: string;
 }
@@ -144,7 +143,6 @@ export interface Goal {
 export interface UserSettings {
   userId: string;
   theme: string;
-  emailNotifications: boolean;
   preferredLanguage: string;
   profileBio?: string;
 }

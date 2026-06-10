@@ -649,7 +649,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                 </span>
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate text-yt-text-primary">{user.name || "Criador"}</p>
-                  <p className="text-[10px] text-yt-text-disabled uppercase tracking-wider font-sans">Plano Pro</p>
+                  <p className="text-[10px] text-yt-text-disabled tracking-wider font-sans truncate">@{user.username}</p>
                 </div>
               </div>
             )}

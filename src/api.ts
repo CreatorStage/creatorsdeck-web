@@ -79,18 +79,18 @@ async function requestJson<T>(url: string, options: RequestInit = {}, auth = tru
 
 export const api = {
   // Auth
-  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+  async login(username: string, password: string): Promise<{ token: string; user: User }> {
     const res = await requestJson<{ token: string; user: User }>(`${API_BASE}/api/auth/login`, {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }, false);
     return res;
   },
 
-  async register(name: string, email: string, password: string): Promise<{ token: string; user: User }> {
+  async register(name: string, username: string, password: string): Promise<{ token: string; user: User }> {
     const res = await requestJson<{ token: string; user: User }>(`${API_BASE}/api/auth/register`, {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, username, password }),
     }, false);
     return res;
   },
