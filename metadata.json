@@ -1,6 +1,4 @@
 {
   "name": "Plataforma de Criação para Criadores",
-  "description": "Uma plataforma integrada de criação para youtubers e creators de Shorts e Reels gerenciarem canais, ideias, notas, referências e roteiros com um teleprompter inteligente integrado.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Uma plataforma integrada de criação para youtubers e creators de Shorts e Reels gerenciarem canais, ideias, notas, referências e roteiros com um teleprompter inteligente integrado."
 }

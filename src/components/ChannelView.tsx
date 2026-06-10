@@ -129,7 +129,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
   const [showChannelStatusPanel, setShowChannelStatusPanel] = useState(false);
   const [suggestionFilterChannel, setSuggestionFilterChannel] = useState("");
   const [suggestionMinViews, setSuggestionMinViews] = useState("");
-  const [suggestionSort, setSuggestionSort] = useState<"views" | "default">("default");
+  const [suggestionSort, setSuggestionSort] = useState<"views" | "default">("views");
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Converte string de views (ex: "269K", "2.3 mi") para número para comparação
@@ -201,7 +201,11 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
     setLoadingSuggestions(true);
     try {
       const data = await api.getChannelSuggestions(channel.id);
-      setSuggestions(data);
+      const cleaned = data.map(v => ({
+        ...v,
+        sourceChannelName: v.sourceChannelName ? v.sourceChannelName.replace(/^\[Canal\]\s*/i, '') : ''
+      }));
+      setSuggestions(cleaned);
     } catch (err) {
       console.error("Erro ao buscar sugestões", err);
     } finally {
@@ -216,7 +220,11 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
       console.log(`Sync iniciado: ${result.queued} canais enfileirados`);
       await new Promise(resolve => setTimeout(resolve, 3000));
       const data = await api.getChannelSuggestions(channel.id);
-      setSuggestions(data);
+      const cleaned = data.map(v => ({
+        ...v,
+        sourceChannelName: v.sourceChannelName ? v.sourceChannelName.replace(/^\[Canal\]\s*/i, '') : ''
+      }));
+      setSuggestions(cleaned);
       const status = await api.getChannelSuggestionsStatus(channel.id);
       setChannelStatus(status);
     } catch (err) {
