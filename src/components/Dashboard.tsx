@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Channel, User } from "../types";
-import { api } from "../api";
+import { api, ValidationError } from "../api";
 import SettingsDialog from "./SettingsDialog";
 import StudioSidebar from "./shared/StudioSidebar";
 import { swal } from "../utils/swal";
@@ -25,6 +25,7 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
   const [name, setName] = useState("");
   const [niche, setNiche] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   // Delete Channel State
@@ -52,11 +53,23 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
 
   const handleCreateChannel = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !niche) {
-      setError("Por favor, preencha o Nome do Canal e o Nicho.");
+    setFieldErrors({});
+    setError(null);
+
+    // Active client-side validations
+    const errors: Record<string, string> = {};
+    if (!name || !name.trim()) {
+      errors.name = "O nome do canal é obrigatório.";
+    }
+    if (!niche || !niche.trim()) {
+      errors.niche = "O nicho do canal é obrigatório.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    setError(null);
+
     setSaving(true);
     try {
       const newChan = await api.createChannel(name, niche);
@@ -66,7 +79,11 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
       setNiche("");
       swal.toast("Canal criado com sucesso!");
     } catch (err: any) {
-      setError(err.message || "Não foi possível criar o canal");
+      if (err instanceof ValidationError) {
+        setFieldErrors(err.errors);
+      } else {
+        setError(err.message || "Não foi possível criar o canal");
+      }
     } finally {
       setSaving(false);
     }
@@ -361,10 +378,16 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: "" }));
+                  }}
                   placeholder="ex: Canal Finanças Explicadas ou Vlogs de Culinária"
                   className="w-full bg-yt-bg-primary border border-yt-bg-overlay text-yt-text-primary rounded-sm py-2 px-3 focus:outline-none focus:border-yt-red text-sm"
                 />
+                {fieldErrors.name && (
+                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -375,10 +398,16 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
                   type="text"
                   required
                   value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
+                  onChange={(e) => {
+                    setNiche(e.target.value);
+                    if (fieldErrors.niche) setFieldErrors(prev => ({ ...prev, niche: "" }));
+                  }}
                   placeholder="ex: Finanças, Culinária, Tecnologia, Notícias"
                   className="w-full bg-yt-bg-primary border border-yt-bg-overlay text-yt-text-primary rounded-sm py-2 px-3 focus:outline-none focus:border-yt-red text-sm"
                 />
+                {fieldErrors.niche && (
+                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.niche}</p>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-yt-bg-overlay">

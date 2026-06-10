@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { api } from "../api";
+import { api, ValidationError } from "../api";
 import { User } from "../types";
 
 interface AuthScreenProps {
@@ -15,25 +15,56 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     setLoading(true);
+
+    // Active client-side validations
+    const errors: Record<string, string> = {};
+    if (!isLogin) {
+      if (!name || name.trim().length < 2) {
+        errors.name = "O nome deve ter no mínimo 2 letras.";
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        errors.email = "O e-mail deve ser válido.";
+      }
+      if (!password || password.length < 6) {
+        errors.password = "A senha deve ter no mínimo 6 caracteres.";
+      }
+    } else {
+      if (!email || !email.trim()) {
+        errors.email = "O e-mail não pode ser em branco.";
+      }
+      if (!password || !password.trim()) {
+        errors.password = "A senha não pode ser em branco.";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isLogin) {
         const data = await api.login(email, password);
         onSuccess(data.token, data.user);
       } else {
-        if (!name) {
-          throw new Error("Por favor, preencha o seu nome.");
-        }
         const data = await api.register(name, email, password);
         onSuccess(data.token, data.user);
       }
     } catch (err: any) {
-      setError(err.message || "Ocorreu um erro inesperado");
+      if (err instanceof ValidationError) {
+        setFieldErrors(err.errors);
+      } else {
+        setError(err.message || "Ocorreu um erro inesperado");
+      }
     } finally {
       setLoading(false);
     }
@@ -97,11 +128,17 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
                     type="text"
                     required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: "" }));
+                    }}
                     placeholder="ex: Matheus Rodrigues"
                     className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-3 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
                   />
                 </div>
+                {fieldErrors.name && (
+                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.name}</p>
+                )}
               </div>
             )}
 
@@ -115,11 +152,17 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: "" }));
+                  }}
                   placeholder="seu@email.com"
                   className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-3 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
                 />
               </div>
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -132,11 +175,17 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: "" }));
+                  }}
                   placeholder="••••••••"
                   className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-3 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
                 />
               </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.password}</p>
+              )}
             </div>
 
             <div className="pt-2">

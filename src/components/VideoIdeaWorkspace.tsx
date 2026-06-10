@@ -509,23 +509,39 @@ export default function VideoIdeaWorkspace({
       return;
     }
 
+    const MAX_FILE_SIZE = 7.5 * 1024 * 1024; // 7.5MB
+    if (file.size > MAX_FILE_SIZE) {
+      swal.error("Arquivo Muito Grande", "O tamanho do arquivo não pode exceder 7.5MB para evitar sobrecarga no servidor.");
+      return;
+    }
+
     try {
       setUploadProgress(true);
       triggerSaveState("Salvando...");
 
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Content = reader.result as string;
-        const uploadedUrl = await api.uploadImage(base64Content, file.name);
-        const added = await api.addReference(idea.id, "IMAGE", uploadedUrl, file.name);
-        setReferences((prev) => [...prev, added]);
-        triggerSaveState("Salvo");
-        setUploadProgress(false);
+        try {
+          const base64Content = reader.result as string;
+          const uploadedUrl = await api.uploadImage(base64Content, file.name);
+          const added = await api.addReference(idea.id, "IMAGE", uploadedUrl, file.name);
+          setReferences((prev) => [...prev, added]);
+          triggerSaveState("Salvo");
+          setUploadProgress(false);
+        } catch (err: any) {
+          console.error(err);
+          triggerSaveState("Alterações pendentes");
+          setUploadProgress(false);
+          const errMsg = err?.message || "Ocorreu um erro ao enviar a imagem.";
+          swal.error("Erro no Upload", errMsg);
+        }
       };
       reader.readAsDataURL(file);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      triggerSaveState("Alterações pendentes");
       setUploadProgress(false);
+      swal.error("Erro no Upload", err?.message || "Ocorreu um erro inesperado.");
     }
   };
 

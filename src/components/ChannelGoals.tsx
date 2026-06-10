@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Channel, Goal } from "../types";
-import { api } from "../api";
+import { api, ValidationError } from "../api";
 import { swal } from "../utils/swal";
 
 interface ChannelGoalsProps {
@@ -17,6 +17,7 @@ export default function ChannelGoals({ channel }: ChannelGoalsProps) {
   const [targetValue, setTargetValue] = useState("");
   const [deadline, setDeadline] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchGoals();
@@ -36,16 +37,36 @@ export default function ChannelGoals({ channel }: ChannelGoalsProps) {
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
+    setFieldErrors({});
+    setError(null);
+
+    // Active client-side validations
+    const errors: Record<string, string> = {};
+    if (!title || !title.trim()) {
+      errors.title = "O título da meta é obrigatório.";
+    }
+    if (!targetValue || !targetValue.trim()) {
+      errors.targetValue = "O valor alvo é obrigatório.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     try {
-      await api.createGoal(channel.id, title, targetValue ? Number(targetValue) : undefined, deadline || undefined);
+      await api.createGoal(channel.id, title, Number(targetValue), deadline || undefined);
       setShowAddModal(false);
       setTitle("");
       setTargetValue("");
       setDeadline("");
       fetchGoals();
     } catch (err: any) {
-      setError(err.message || "Erro ao criar meta");
+      if (err instanceof ValidationError) {
+        setFieldErrors(err.errors);
+      } else {
+        setError(err.message || "Erro ao criar meta");
+      }
     }
   };
 
@@ -171,23 +192,36 @@ export default function ChannelGoals({ channel }: ChannelGoalsProps) {
                   type="text"
                   required
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (fieldErrors.title) setFieldErrors(prev => ({ ...prev, title: "" }));
+                  }}
                   placeholder="ex: Chegar a 10.000 inscritos"
                   className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 px-3 focus:outline-none focus:border-[#ff5045] text-sm"
                 />
+                {fieldErrors.title && (
+                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.title}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#aaaaaa] mb-1.5">
-                  Valor Alvo (Números) - Opcional
+                  Valor Alvo (Números)
                 </label>
                 <input
                   type="number"
+                  required
                   value={targetValue}
-                  onChange={(e) => setTargetValue(e.target.value)}
+                  onChange={(e) => {
+                    setTargetValue(e.target.value);
+                    if (fieldErrors.targetValue) setFieldErrors(prev => ({ ...prev, targetValue: "" }));
+                  }}
                   placeholder="ex: 10000"
                   className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 px-3 focus:outline-none focus:border-[#ff5045] text-sm"
                 />
+                {fieldErrors.targetValue && (
+                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.targetValue}</p>
+                )}
               </div>
 
               <div>

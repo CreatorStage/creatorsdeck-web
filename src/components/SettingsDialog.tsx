@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { User, UserSettings } from "../types";
-import { api } from "../api";
+import { api, ValidationError } from "../api";
 
 interface SettingsDialogProps {
   user: User;
@@ -12,6 +12,7 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
 
   // Form states
@@ -44,6 +45,22 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
     setSaving(true);
     setSuccess(false);
     setError(null);
+    setFieldErrors({});
+
+    const errors: Record<string, string> = {};
+    if (!theme) {
+      errors.theme = "O tema da interface é obrigatório.";
+    }
+    if (!preferredLanguage) {
+      errors.preferredLanguage = "O idioma preferido é obrigatório.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setSaving(false);
+      return;
+    }
+
     try {
       await api.updateSettings(user.id, {
         theme,
@@ -53,7 +70,11 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.message || "Erro ao salvar configurações");
+      if (err instanceof ValidationError) {
+        setFieldErrors(err.errors);
+      } else {
+        setError(err.message || "Erro ao salvar configurações");
+      }
     } finally {
       setSaving(false);
     }
@@ -87,12 +108,26 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
                 </label>
                 <select
                   value={theme}
-                  onChange={(e) => setTheme(e.target.value)}
-                  className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 px-3 focus:outline-none focus:border-[#ff5045] text-sm"
+                  onChange={(e) => {
+                    setTheme(e.target.value);
+                    if (fieldErrors.theme) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.theme;
+                        return next;
+                      });
+                    }
+                  }}
+                  className={`w-full bg-[#0f0f0f] border text-[#f1f1f1] rounded-sm py-2 px-3 focus:outline-none focus:border-[#ff5045] text-sm ${
+                    fieldErrors.theme ? "border-[#ff5045]" : "border-[#404040]"
+                  }`}
                 >
                   <option value="dark">Escuro (YouTube)</option>
                   <option value="light">Claro (Estudo)</option>
                 </select>
+                {fieldErrors.theme && (
+                  <p className="mt-1 text-[#ff5045] text-[11px] font-sans font-medium">{fieldErrors.theme}</p>
+                )}
               </div>
 
               <div>
@@ -101,12 +136,26 @@ export default function SettingsDialog({ user, onClose }: SettingsDialogProps) {
                 </label>
                 <select
                   value={preferredLanguage}
-                  onChange={(e) => setPreferredLanguage(e.target.value)}
-                  className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 px-3 focus:outline-none focus:border-[#ff5045] text-sm"
+                  onChange={(e) => {
+                    setPreferredLanguage(e.target.value);
+                    if (fieldErrors.preferredLanguage) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.preferredLanguage;
+                        return next;
+                      });
+                    }
+                  }}
+                  className={`w-full bg-[#0f0f0f] border text-[#f1f1f1] rounded-sm py-2 px-3 focus:outline-none focus:border-[#ff5045] text-sm ${
+                    fieldErrors.preferredLanguage ? "border-[#ff5045]" : "border-[#404040]"
+                  }`}
                 >
                   <option value="pt-BR">Português (Brasil)</option>
                   <option value="en-US">English (USA)</option>
                 </select>
+                {fieldErrors.preferredLanguage && (
+                  <p className="mt-1 text-[#ff5045] text-[11px] font-sans font-medium">{fieldErrors.preferredLanguage}</p>
+                )}
               </div>
             </div>
 
