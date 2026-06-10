@@ -9,7 +9,6 @@ import {
   Lightbulb,
   Mic2,
   PlayCircle,
-  ShieldCheck,
   Sparkles,
   Tv,
   Video
@@ -62,7 +61,6 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
           <nav className="hidden items-center gap-6 text-xs font-semibold uppercase tracking-wider text-[#aaaaaa] md:flex">
             <a href="#recursos" className="hover:text-white">Recursos</a>
             <a href="#fluxo" className="hover:text-white">Fluxo</a>
-            <a href="#preco" className="hover:text-white">Preco</a>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -106,8 +104,7 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
               </button>
             </div>
 
-            <div className="mt-8 grid max-w-xl grid-cols-3 gap-3 text-xs text-[#aaaaaa]">
-              <span className="flex items-center gap-2"><Check size={15} className="text-[#66bb6a]" /> Sem cartao</span>
+            <div className="mt-8 grid max-w-xl grid-cols-2 gap-3 text-xs text-[#aaaaaa]">
               <span className="flex items-center gap-2"><Check size={15} className="text-[#66bb6a]" /> Setup rapido</span>
               <span className="flex items-center gap-2"><Check size={15} className="text-[#66bb6a]" /> Feito para YouTube</span>
             </div>
@@ -209,42 +206,6 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
                   </span>
                   <p className="text-sm font-semibold text-white">{step}</p>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="preco" className="mx-auto max-w-7xl px-5 py-20 md:px-8">
-        <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:items-center">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#66bb6a]">Oferta inicial</span>
-            <h2 className="mt-3 text-3xl font-bold text-white md:text-4xl">Comece organizando seu proximo video hoje</h2>
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-[#aaaaaa]">
-              Ideal para criadores solo, editores e pequenos times que precisam tirar ideias do bloco de notas e transformar em uma rotina de producao.
-            </p>
-          </div>
-
-          <div className="border border-[#404040] bg-[#1c1c1c] p-7">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-white">Plano Creator</h3>
-              <ShieldCheck className="text-[#66bb6a]" size={26} />
-            </div>
-            <p className="mb-6 text-sm leading-6 text-[#aaaaaa]">Acesso ao workspace completo para validar sua rotina de criacao.</p>
-            <div className="mb-6 flex items-end gap-2">
-              <span className="text-4xl font-bold text-white">Gratis</span>
-              <span className="pb-1 text-sm text-[#aaaaaa]">na fase MVP</span>
-            </div>
-            <button type="button" onClick={onSignup} className="mb-5 flex w-full items-center justify-center gap-2 rounded-sm bg-[#ff5045] px-5 py-3 text-sm font-bold uppercase tracking-wider text-white hover:bg-[#e0453b]">
-              Criar minha conta
-              <ArrowRight size={18} />
-            </button>
-            <div className="space-y-3 text-sm text-[#d6d6d6]">
-              {["Canais ilimitados no painel", "Ideias com status e prazo", "Roteiro rico com blocos", "Teleprompter para gravacao"].map((item) => (
-                <p key={item} className="flex items-center gap-2">
-                  <Check size={16} className="text-[#66bb6a]" />
-                  {item}
-                </p>
               ))}
             </div>
           </div>

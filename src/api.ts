@@ -1,6 +1,6 @@
 import { Channel, ChannelReferenceLink, VideoIdea, Reference, Note, VideoScript, ScriptVersion, User, Goal, UserSettings, UserSettingsResponse, UploadResponse, SuggestedVideo } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || ""; // Configurable API base URL, defaults to relative path proxy for local run
+const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/+$/, ""); // Configurable API base URL, defaults to relative path proxy for local run
 
 type UnauthorizedHandler = () => void;
 
