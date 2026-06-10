@@ -25,7 +25,7 @@ interface SalesPageProps {
   onSignup: () => void;
 }
 
-const REPO_URL = "https://github.com/CreatorStage/CreatorStage-Studio";
+const REPO_URL = "https://github.com/CreatorsDeck/CreatorsDeck-Studio";
 
 const problems = [
   {
@@ -119,7 +119,7 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
               <PlayCircle size={20} fill="white" className="text-white" />
             </span>
             <span className="text-sm font-bold uppercase tracking-widest">
-              Creator<span className="text-[#ff5045]">Stage</span>
+              Creators<span className="text-[#ff5045]">Deck</span>
             </span>
           </button>
 
@@ -189,7 +189,7 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
             </h1>
 
             <p className="mt-6 max-w-2xl text-base leading-7 text-[#999] md:text-lg">
-              O CreatorStage e um workspace open source que centraliza ideias, roteiros modulares, 
+              O CreatorsDeck e um workspace open source que centraliza ideias, roteiros modulares, 
               referencias, anotacoes e teleprompter — tudo o que voce precisa antes de apertar REC.
             </p>
 
@@ -291,7 +291,7 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
             </h2>
             <p className="mt-4 text-sm leading-7 text-[#888] max-w-2xl mx-auto">
               Produzir videos com consistencia e dificil quando suas ferramentas nao conversam entre si. 
-              O CreatorStage resolve cada um desses problemas em uma unica interface.
+              O CreatorsDeck resolve cada um desses problemas em uma unica interface.
             </p>
           </div>
 
@@ -400,7 +400,7 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
             </h2>
 
             <p className="mt-5 text-base leading-7 text-[#999] max-w-2xl mx-auto">
-              O CreatorStage e 100% open source. Voce pode rodar no seu proprio servidor, 
+              O CreatorsDeck e 100% open source. Voce pode rodar no seu proprio servidor, 
               personalizar ao seu fluxo e contribuir com novas funcionalidades. 
               Sem assinaturas, sem limites, sem pegadinhas.
             </p>
@@ -467,7 +467,7 @@ export default function SalesPage({ onLogin, onSignup }: SalesPageProps) {
                 <PlayCircle size={15} fill="white" className="text-white" />
               </span>
               <span className="text-xs font-bold uppercase tracking-widest text-[#888]">
-                Creator<span className="text-[#ff5045]">Stage</span>
+                Creators<span className="text-[#ff5045]">Deck</span>
               </span>
             </div>
 

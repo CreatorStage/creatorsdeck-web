@@ -121,7 +121,7 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
           <StudioSidebar
             className="absolute left-0 top-0 bottom-0 w-[300px] bg-yt-bg-surface border-r border-yt-bg-overlay"
             collapsed={false}
-            brandTitle="CreatorStage"
+            brandTitle="CreatorsDeck"
             brandSubtitle="Studio"
             brandCollapsedLabel="CS"
             topSection={
@@ -149,7 +149,7 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
                   <span className="material-icons text-[18px] text-[#ff5045]">logout</span>
                   <span className="font-medium">Sair</span>
                 </button>
-                <p className="text-[10px] text-yt-text-disabled uppercase tracking-widest font-sans text-center pt-2 border-t border-yt-bg-overlay">CreatorStage Studio</p>
+                <p className="text-[10px] text-yt-text-disabled uppercase tracking-widest font-sans text-center pt-2 border-t border-yt-bg-overlay">CreatorsDeck Studio</p>
               </div>
             }
           >
@@ -183,7 +183,7 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
           className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-[300px] bg-yt-bg-surface border-r border-yt-bg-overlay ${sidebarCollapsed ? "!w-[72px]" : ""}`}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
-          brandTitle="CreatorStage"
+          brandTitle="CreatorsDeck"
           brandSubtitle="Studio"
           brandCollapsedLabel="CS"
           topSection={

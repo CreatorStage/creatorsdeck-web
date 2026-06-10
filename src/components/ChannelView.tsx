@@ -610,7 +610,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
         className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-[300px] bg-yt-bg-surface border-r border-yt-bg-overlay ${sidebarCollapsed ? "!w-[72px]" : ""}`}
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
-        brandTitle="CreatorStage"
+        brandTitle="CreatorsDeck"
         brandSubtitle="Studio"
         brandCollapsedLabel="CS"
         topSection={

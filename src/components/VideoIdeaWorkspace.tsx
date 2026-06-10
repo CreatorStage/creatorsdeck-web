@@ -1247,7 +1247,7 @@ export default function VideoIdeaWorkspace({
               <div className="flex items-center gap-2">
                 <span className="material-icons text-yt-red text-3xl">subscriptions</span>
                 <div>
-                  <div className="text-sm font-semibold uppercase tracking-widest text-yt-text-primary">CreatorStage</div>
+                  <div className="text-sm font-semibold uppercase tracking-widest text-yt-text-primary">CreatorsDeck</div>
                   <div className="text-[10px] text-yt-text-secondary">Workspace</div>
                 </div>
               </div>

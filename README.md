@@ -1,6 +1,6 @@
-# CreatorStage Studio - Frontend Web Application 🎨
+# CreatorsDeck Studio - Frontend Web Application 🎨
 
-Este diretório contém a interface web do **CreatorStage Studio** desenvolvida com **React**, **Vite** e **Tailwind CSS**. A interface oferece um dashboard no estilo YouTube Studio com funcionalidades para gerenciar roteiros em blocos, visualizar Moodboards de imagens/links e gerenciar ideias através de tabelas e quadros Kanban.
+Este diretório contém a interface web do **CreatorsDeck Studio** desenvolvida com **React**, **Vite** e **Tailwind CSS**. A interface oferece um dashboard no estilo YouTube Studio com funcionalidades para gerenciar roteiros em blocos, visualizar Moodboards de imagens/links e gerenciar ideias através de tabelas e quadros Kanban.
 
 ---
 

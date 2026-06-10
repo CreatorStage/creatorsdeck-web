@@ -94,11 +94,11 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
           {/* Logo YouTube Studio Style */}
           <span className="material-icons text-[#ff5045] text-4xl">subscriptions</span>
           <span className="text-xl font-bold uppercase tracking-wider text-[#f1f1f1]" style={{ fontStyle: 'normal' }}>
-            Creator<span className="text-[#ff5045]">Stage</span>
+            Creators<span className="text-[#ff5045]">Deck</span>
           </span>
         </div>
         <h2 className="mt-6 text-center text-xl font-semibold text-[#f1f1f1]">
-          {isLogin ? "Fazer login no CreatorStage" : "Criar sua conta de criador"}
+          {isLogin ? "Fazer login no CreatorsDeck" : "Criar sua conta de criador"}
         </h2>
         <p className="mt-2 text-center text-sm text-[#aaaaaa]">
           {isLogin ? "Gerencie seus canais e roteiros em um só lugar" : "Inicie sua jornada integrada hoje"}

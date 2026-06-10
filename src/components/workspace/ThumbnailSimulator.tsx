@@ -89,7 +89,7 @@ function LiveCard({
         <div className="w-9 h-9 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-xs font-bold text-yt-text-primary shrink-0">CS</div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-yt-text-primary line-clamp-2">{title || "Título do vídeo"}</p>
-          <p className="mt-1 text-xs text-yt-text-secondary font-sans">CreatorStage • 128 mil visualizações • há 2 dias</p>
+          <p className="mt-1 text-xs text-yt-text-secondary font-sans">CreatorsDeck • 128 mil visualizações • há 2 dias</p>
         </div>
       </div>
     </article>
