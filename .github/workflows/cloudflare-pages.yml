@@ -33,6 +33,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: 'yt-plataform-front'
+          projectName: 'creatorstagestudio'
           directory: 'dist'
           branch: ${{ github.ref_name }}
