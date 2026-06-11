@@ -51,7 +51,7 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   theme,
   toggleTheme
 }) => {
-  const initials = user?.name ? user.name[0].toUpperCase() : "C";
+  const initials = user?.username ? user.username[0].toUpperCase() : "C";
   const statusLabel = productionStatuses.find((item) => item.value === status)?.label || status;
   const isSaving = saveVisualState === "sync";
 
@@ -143,7 +143,7 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
               <div className="flex items-center gap-3 pt-3 border-t border-yt-bg-overlay">
                 <span className="w-8 h-8 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-xs font-bold shrink-0 text-yt-text-primary">{initials}</span>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold truncate text-yt-text-primary">{user?.name || "Criador"}</p>
+                  <p className="text-xs font-bold truncate text-yt-text-primary">{user?.username || "Criador"}</p>
                   <p className="text-[10px] text-yt-text-disabled tracking-wider font-sans truncate">{user?.username ? `@${user.username}` : "Open Source"}</p>
                 </div>
               </div>

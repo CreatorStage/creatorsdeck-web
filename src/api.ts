@@ -87,10 +87,10 @@ export const api = {
     return res;
   },
 
-  async register(name: string, username: string, password: string): Promise<{ token: string; user: User }> {
+  async register(username: string, password: string): Promise<{ token: string; user: User }> {
     const res = await requestJson<{ token: string; user: User }>(`${API_BASE}/api/auth/register`, {
       method: "POST",
-      body: JSON.stringify({ name, username, password }),
+      body: JSON.stringify({ username, password }),
     }, false);
     return res;
   },

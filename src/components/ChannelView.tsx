@@ -645,10 +645,10 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
             {!sidebarCollapsed && user && (
               <div className="flex items-center gap-3 pt-3 border-t border-yt-bg-overlay">
                 <span className="w-8 h-8 rounded-full bg-yt-bg-elevated border border-yt-bg-overlay flex items-center justify-center text-xs font-bold shrink-0 text-yt-text-primary">
-                  {user.name?.[0]?.toUpperCase() || "C"}
+                  {user.username?.[0]?.toUpperCase() || "C"}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold truncate text-yt-text-primary">{user.name || "Criador"}</p>
+                  <p className="text-xs font-bold truncate text-yt-text-primary">{user.username || "Criador"}</p>
                   <p className="text-[10px] text-yt-text-disabled tracking-wider font-sans truncate">@{user.username}</p>
                 </div>
               </div>

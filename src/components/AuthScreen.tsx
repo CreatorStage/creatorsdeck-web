@@ -12,7 +12,9 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
   const [isLogin, setIsLogin] = useState(initialMode === "login");
   const [username, setUsername] = useState("rodrigmatheus19");
   const [password, setPassword] = useState("password123");
-  const [name, setName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -26,14 +28,14 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
     // Active client-side validations
     const errors: Record<string, string> = {};
     if (!isLogin) {
-      if (!name || name.trim().length < 2) {
-        errors.name = "O nome deve ter no mínimo 2 letras.";
-      }
       if (!username || username.trim().length < 3) {
         errors.username = "O usuário deve ter no mínimo 3 caracteres.";
       }
       if (!password || password.length < 6) {
         errors.password = "A senha deve ter no mínimo 6 caracteres.";
+      }
+      if (password !== confirmPassword) {
+        errors.confirmPassword = "As senhas não coincidem.";
       }
     } else {
       if (!username || !username.trim()) {
@@ -55,7 +57,7 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
         const data = await api.login(username, password);
         onSuccess(data.token, data.user);
       } else {
-        const data = await api.register(name, username, password);
+        const data = await api.register(username, password);
         onSuccess(data.token, data.user);
       }
     } catch (err: any) {
@@ -110,30 +112,7 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
           )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {!isLogin && (
-              <div>
-                <label className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider mb-2">
-                  Qual seu Nome / Pseudônimo?
-                </label>
-                <div className="relative">
-                  <span className="material-icons absolute left-3 top-2 text-[#717171] text-lg">person</span>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: "" }));
-                    }}
-                    placeholder="ex: Matheus Rodrigues"
-                    className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-3 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
-                  />
-                </div>
-                {fieldErrors.name && (
-                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.name}</p>
-                )}
-              </div>
-            )}
+
 
             <div>
               <label className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider mb-2">
@@ -165,7 +144,7 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
               <div className="relative">
                 <span className="material-icons absolute left-3 top-2 text-[#717171] text-lg">lock_outline</span>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => {
@@ -173,13 +152,54 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
                     if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: "" }));
                   }}
                   placeholder="••••••••"
-                  className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-3 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
+                  className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-10 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2 text-[#717171] hover:text-[#f1f1f1] transition-colors focus:outline-none"
+                  tabIndex={-1}
+                >
+                  <span className="material-icons text-lg">{showPassword ? "visibility_off" : "visibility"}</span>
+                </button>
               </div>
               {fieldErrors.password && (
                 <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.password}</p>
               )}
             </div>
+
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wider mb-2">
+                  Confirmar Senha
+                </label>
+                <div className="relative">
+                  <span className="material-icons absolute left-3 top-2 text-[#717171] text-lg">lock_outline</span>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: "" }));
+                    }}
+                    placeholder="••••••••"
+                    className="w-full bg-[#0f0f0f] border border-[#404040] text-[#f1f1f1] rounded-sm py-2 pl-10 pr-10 focus:outline-none focus:border-[#ff5045] text-sm transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-2 text-[#717171] hover:text-[#f1f1f1] transition-colors focus:outline-none"
+                    tabIndex={-1}
+                  >
+                    <span className="material-icons text-lg">{showConfirmPassword ? "visibility_off" : "visibility"}</span>
+                  </button>
+                </div>
+                {fieldErrors.confirmPassword && (
+                  <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.confirmPassword}</p>
+                )}
+              </div>
+            )}
 
             <div className="pt-2">
               <button
