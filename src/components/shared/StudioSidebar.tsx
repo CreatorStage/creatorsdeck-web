@@ -30,24 +30,30 @@ export default function StudioSidebar({
           {onToggleCollapsed ? (
             <button type="button" onClick={onToggleCollapsed} className="text-left w-full flex items-center justify-between group bg-transparent border-0 cursor-pointer">
               {!collapsed ? (
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-yt-text-primary leading-none">{brandTitle}</h1>
-                  <p className="text-[10px] text-yt-text-disabled uppercase tracking-[0.2em] mt-1 font-sans">{brandSubtitle}</p>
+                <div className="flex items-center gap-3">
+                  <img src="/apple-touch-icon.png" alt="Logo" className="w-8 h-8 object-contain rounded-md" />
+                  <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-yt-text-primary leading-none">{brandTitle}</h1>
+                    <p className="text-[10px] text-yt-text-disabled uppercase tracking-[0.2em] mt-1 font-sans">{brandSubtitle}</p>
+                  </div>
                 </div>
               ) : (
-                <span className="text-xl font-extrabold text-yt-text-primary mx-auto">{brandCollapsedLabel}</span>
+                <img src="/apple-touch-icon.png" alt="Logo" className="w-8 h-8 object-contain mx-auto rounded-md" />
               )}
               {!collapsed && <span className="material-icons text-yt-text-disabled text-base group-hover:text-yt-text-secondary transition-colors">chevron_left</span>}
             </button>
           ) : (
             <div className="w-full flex items-center justify-between">
               {!collapsed ? (
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-yt-text-primary leading-none">{brandTitle}</h1>
-                  <p className="text-[10px] text-yt-text-disabled uppercase tracking-[0.2em] mt-1 font-sans">{brandSubtitle}</p>
+                <div className="flex items-center gap-3">
+                  <img src="/apple-touch-icon.png" alt="Logo" className="w-8 h-8 object-contain rounded-md" />
+                  <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-yt-text-primary leading-none">{brandTitle}</h1>
+                    <p className="text-[10px] text-yt-text-disabled uppercase tracking-[0.2em] mt-1 font-sans">{brandSubtitle}</p>
+                  </div>
                 </div>
               ) : (
-                <span className="text-xl font-extrabold text-yt-text-primary mx-auto">{brandCollapsedLabel}</span>
+                <img src="/apple-touch-icon.png" alt="Logo" className="w-8 h-8 object-contain mx-auto rounded-md" />
               )}
             </div>
           )}
