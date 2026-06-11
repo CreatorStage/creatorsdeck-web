@@ -115,9 +115,7 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
           <button type="button" onClick={onSignup} className="flex items-center gap-2.5 group">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff5045] to-[#ff2d20] shadow-lg shadow-[#ff5045]/25 group-hover:shadow-[#ff5045]/40 transition-shadow">
-              <PlayCircle size={20} fill="white" className="text-white" />
-            </span>
+            <img src="/apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-9 h-9 object-contain rounded-lg shadow-lg shadow-[#ff5045]/25 group-hover:shadow-[#ff5045]/40 transition-shadow" />
             <span className="text-sm font-bold uppercase tracking-widest">
               Creators<span className="text-[#ff5045]">Deck</span>
             </span>
@@ -463,9 +461,7 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
         <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#ff5045] to-[#ff2d20]">
-                <PlayCircle size={15} fill="white" className="text-white" />
-              </span>
+              <img src="/apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-7 h-7 object-contain rounded-md" />
               <span className="text-xs font-bold uppercase tracking-widest text-[#888]">
                 Creators<span className="text-[#ff5045]">Deck</span>
               </span>
