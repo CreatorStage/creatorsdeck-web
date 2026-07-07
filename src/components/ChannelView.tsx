@@ -117,6 +117,16 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
   const [referenceUrl, setReferenceUrl] = useState("");
   const [referenceNote, setReferenceNote] = useState("");
   const [referenceError, setReferenceError] = useState<string | null>(null);
+
+  // States for editing a reference link / channel
+  const [editingReference, setEditingReference] = useState<ChannelReferenceLink | null>(null);
+  const [editRefTitle, setEditRefTitle] = useState("");
+  const [editRefUrl, setEditRefUrl] = useState("");
+  const [editRefNote, setEditRefNote] = useState("");
+  const [editRefThumbnailUrl, setEditRefThumbnailUrl] = useState("");
+  const [editRefError, setEditRefError] = useState<string | null>(null);
+  const [editingRefSaving, setEditingRefSaving] = useState(false);
+
   const [checklistDraft, setChecklistDraft] = useState<Record<VideoIdeaStatus, string[]>>(() => parseChecklistTemplates(channel.checklistTemplates));
   const [checklistInputs, setChecklistInputs] = useState<Partial<Record<VideoIdeaStatus, string>>>({});
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
@@ -132,14 +142,55 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
   const [suggestionSort, setSuggestionSort] = useState<"views" | "default">("views");
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  // Converte string de views (ex: "269K", "2.3 mi") para número para comparação
+  // Converte string de views (ex: "269K", "2.3 mi", "126 mil") para número para comparação
   const parseViewCount = (views?: string): number => {
     if (!views) return 0;
     const v = views.toLowerCase().replace(/[\s.]/g, "").replace(",", ".");
+    if (v.includes("mil")) return parseFloat(v) * 1_000;
     if (v.includes("bi") || v.includes("b")) return parseFloat(v) * 1_000_000_000;
     if (v.includes("mi") || v.includes("m")) return parseFloat(v) * 1_000_000;
     if (v.includes("k")) return parseFloat(v) * 1_000;
     return parseFloat(v) || 0;
+  };
+
+  const getViewsDetails = (viewsStr?: string) => {
+    const count = parseViewCount(viewsStr);
+    if (count === 0) {
+      return {
+        text: viewsStr || "0 visualizações",
+        badgeClass: "bg-yt-bg-elevated text-yt-text-secondary border-yt-border/50",
+        icon: "visibility_off"
+      };
+    }
+    
+    const formatted = new Intl.NumberFormat('pt-BR').format(count);
+    
+    if (count >= 1000000) {
+      return {
+        text: `${formatted} visualizações`,
+        badgeClass: "bg-[#ff5045]/10 text-[#ff5045] border-[#ff5045]/30 font-bold shadow-[0_0_8px_rgba(255,80,69,0.15)]",
+        icon: "local_fire_department"
+      };
+    }
+    if (count >= 100000) {
+      return {
+        text: `${formatted} visualizações`,
+        badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/30 font-semibold",
+        icon: "trending_up"
+      };
+    }
+    if (count >= 10000) {
+      return {
+        text: `${formatted} visualizações`,
+        badgeClass: "bg-sky-500/10 text-sky-400 border-sky-500/30",
+        icon: "visibility"
+      };
+    }
+    return {
+      text: `${formatted} visualizações`,
+      badgeClass: "bg-[#272727] text-[#aaaaaa] border-transparent",
+      icon: "visibility"
+    };
   };
 
   const filteredSuggestions = useMemo(() => {
@@ -484,6 +535,44 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
     }
   };
 
+  const handleStartEditReference = (reference: ChannelReferenceLink) => {
+    setEditingReference(reference);
+    setEditRefTitle(reference.title);
+    setEditRefUrl(reference.url);
+    setEditRefNote(reference.note || "");
+    setEditRefThumbnailUrl(reference.thumbnailUrl || "");
+    setEditRefError(null);
+  };
+
+  const handleSaveEditReference = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReference || !editingReference.id) return;
+    
+    setEditingRefSaving(true);
+    setEditRefError(null);
+
+    try {
+      const updated = await api.updateChannelReferenceLink(
+        editingReference.id,
+        editRefTitle.trim(),
+        editRefUrl.trim(),
+        editRefNote.trim(),
+        editRefThumbnailUrl.trim(),
+        editingReference.type
+      );
+
+      setChannelReferences((current) =>
+        current.map((ref) => (ref.id === editingReference.id ? updated : ref))
+      );
+      setEditingReference(null);
+    } catch (err: any) {
+      console.error("Erro ao atualizar referência", err);
+      setEditRefError(err.message || "Erro ao atualizar a referência.");
+    } finally {
+      setEditingRefSaving(false);
+    }
+  };
+
   const handleDragStart = (e: React.DragEvent, ideaId: string) => {
     e.dataTransfer.setData("ideaId", ideaId);
   };
@@ -686,6 +775,22 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
             <button onClick={onBack} className="hover:text-yt-text-primary pb-3 bg-transparent border-0 cursor-pointer text-xl font-sans">Painel</button>
             <button className="text-yt-text-primary border-b-2 border-yt-red pb-3 bg-transparent border-0 text-xl font-sans">Banco de Ideias</button>
             <button className="opacity-50 cursor-not-allowed pb-3 bg-transparent border-0 text-xl font-sans" title="Selecione uma ideia para acessar a área de trabalho" disabled>Área de Trabalho</button>
+            <div className="flex items-center gap-2 pb-3 select-none">
+              <span className="text-xs font-bold uppercase tracking-wider text-yt-text-primary bg-yt-bg-overlay/40 border border-yt-bg-overlay px-3 py-1 rounded font-sans">
+                {channel.name}
+              </span>
+              {channel.channelUrl && (
+                <a
+                  href={channel.channelUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center w-7 h-7 rounded-full bg-yt-red/10 border border-yt-red/20 text-yt-red hover:bg-yt-red hover:text-white transition-all shrink-0"
+                  title="Abrir meu canal no YouTube"
+                >
+                  <span className="material-icons text-base">play_arrow</span>
+                </a>
+              )}
+            </div>
           </nav>
 
           <div className="flex items-center gap-5 ml-auto">
@@ -759,74 +864,16 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Nicho</label>
                     <input value={channelDraft.niche || ""} onChange={(e) => setChannelDraft({ ...channelDraft, niche: e.target.value })} className="studio-input w-full p-3" placeholder="Ex.: tecnologia, educação, finanças" />
                   </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Link do meu próprio canal (YouTube)</label>
+                    <input value={channelDraft.channelUrl || ""} onChange={(e) => setChannelDraft({ ...channelDraft, channelUrl: e.target.value })} className="studio-input w-full p-3" placeholder="Ex: https://www.youtube.com/@meucanal" />
+                  </div>
                 </div>
 
                 <div className="lg:col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">CTAs reutilizáveis</label>
-                  <textarea rows={5} value={(channelDraft.ctaTemplates || []).join("\n")} onChange={(e) => setChannelDraft({ ...channelDraft, ctaTemplates: e.target.value.split("\n").map((line) => line.trim()).filter(Boolean) })} className="studio-input w-full p-3" placeholder="Um CTA por linha" />
-                </div>
-
-                <div className="lg:col-span-2 space-y-5 pt-2">
-                  <div className="flex items-center gap-3">
-                    <span className="material-icons text-yt-red text-lg">checklist</span>
-                    <div>
-                      <h4 className="text-lg font-bold text-yt-text-primary">Checklists de Produção</h4>
-                      <p className="text-sm text-yt-text-secondary font-sans">Configure os itens obrigatórios por status. O popup aparece quando uma ideia é movida no Kanban.</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    {KANBAN_COLUMNS.map((column) => {
-                      const items = getChecklistItemsForStatus(column.key);
-                      const currentInput = checklistInputs[column.key] || "";
-
-                      return (
-                        <article key={column.key} className="rounded-[8px] border border-yt-bg-overlay bg-yt-bg-primary p-4 space-y-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="material-icons text-yt-red text-[18px]">{column.icon}</span>
-                              <h5 className="text-sm font-extrabold uppercase tracking-wider text-yt-text-primary truncate">{column.label}</h5>
-                            </div>
-                            <span className="studio-label text-yt-text-secondary">{items.length}</span>
-                          </div>
-
-                          <div className="space-y-2">
-                            {items.length === 0 ? (
-                              <div className="rounded-[6px] border border-dashed border-yt-bg-overlay bg-white/[0.02] px-4 py-5 text-center text-xs text-yt-text-disabled font-sans">
-                                Nenhum item configurado.
-                              </div>
-                            ) : (
-                              items.map((item) => (
-                                <div key={item} className="flex items-start justify-between gap-3 rounded-[6px] border border-yt-bg-overlay bg-yt-bg-surface px-3 py-2">
-                                  <span className="text-sm text-yt-text-primary leading-6">{item}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleChecklistItemRemove(column.key, item)}
-                                    className="p-1 bg-transparent border-0 text-yt-text-secondary hover:text-yt-red cursor-pointer shrink-0"
-                                    title="Remover item"
-                                  >
-                                    <span className="material-icons text-sm">delete</span>
-                                  </button>
-                                </div>
-                              ))
-                            )}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <input
-                              value={currentInput}
-                              onChange={(e) => setChecklistInputs((current) => ({ ...current, [column.key]: e.target.value }))}
-                              className="studio-input flex-1 p-3 text-sm"
-                              placeholder="Novo item"
-                            />
-                            <button type="button" onClick={() => handleChecklistItemAdd(column.key)} className="yt-btn-secondary shrink-0">
-                              <span className="material-icons text-sm">add</span>
-                            </button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2">Descrição do Canal</label>
+                  <textarea rows={5} value={channelDraft.description || ""} onChange={(e) => setChannelDraft({ ...channelDraft, description: e.target.value })} className="studio-input w-full p-3" placeholder="Defina o que o canal é, e o que não é. Ex: Canal sobre tecnologia focado em programação web..." />
                 </div>
 
                 <div className="lg:col-span-2 flex justify-end gap-3 pt-2">
@@ -927,6 +974,10 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-3 shrink-0 ml-2 sm:ml-4">
+                            <button type="button" onClick={() => handleStartEditReference(reference)} className="text-yt-text-disabled hover:text-yt-blue p-2 bg-transparent border-0 cursor-pointer transition-colors flex items-center gap-1" title="Editar referência">
+                              <span className="material-icons text-[18px]">edit</span>
+                              <span className="text-[10px] uppercase tracking-wider hidden sm:inline-block">Editar</span>
+                            </button>
                             <button type="button" onClick={() => handleRemoveChannelReference(reference.id)} className="text-yt-text-disabled hover:text-yt-red p-2 bg-transparent border-0 cursor-pointer transition-colors flex items-center gap-1" title="Remover dos salvos">
                               <span className="material-icons text-[18px]">bookmark_remove</span>
                               <span className="text-[10px] uppercase tracking-wider hidden sm:inline-block">Remover</span>
@@ -967,6 +1018,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
 
                         <div className="flex items-center gap-2 shrink-0">
                           <a href={reference.url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-[3px] border border-yt-bg-overlay text-yt-text-primary hover:bg-yt-bg-elevated transition-colors">Abrir</a>
+                          <button type="button" onClick={() => handleStartEditReference(reference)} className="px-3 py-2 rounded-[3px] border border-yt-bg-overlay text-yt-blue hover:bg-yt-blue/10 transition-colors cursor-pointer bg-transparent">Editar</button>
                           <button type="button" onClick={() => handleRemoveChannelReference(reference.id)} className="px-3 py-2 rounded-[3px] border border-yt-bg-overlay text-yt-red hover:bg-yt-red/10 transition-colors cursor-pointer bg-transparent">Remover</button>
                         </div>
                       </article>
@@ -1236,9 +1288,17 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                           </a>
 
                           {/* Views Count / Age */}
-                          <span className="text-xs text-yt-text-secondary mt-0.5 block font-sans">
-                            {video.views}
-                          </span>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {(() => {
+                              const details = getViewsDetails(video.views);
+                              return (
+                                <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-sm border ${details.badgeClass}`}>
+                                  <span className="material-icons notranslate text-[12px]" translate="no">{details.icon}</span>
+                                  {details.text}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -1475,6 +1535,74 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="yt-btn-secondary">Cancelar</button>
                 <button type="submit" disabled={saving} className="yt-btn-primary">{saving ? "Salvando..." : "Criar Ideia"}</button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {editingReference && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80" onClick={() => setEditingReference(null)} />
+            <form onSubmit={handleSaveEditReference} className="yt-card w-full max-w-lg p-7 relative z-10 space-y-5 text-left">
+              <h3 className="text-2xl font-extrabold text-yt-text-primary flex items-center gap-2">
+                <span className="material-icons text-yt-blue">edit</span>
+                Editar Referência
+              </h3>
+              
+              {editRefError && (
+                <div className="border border-yt-red/40 bg-yt-red/10 text-yt-text-primary p-3 text-sm font-sans">
+                  {editRefError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2 font-sans">Nome / Título</label>
+                <input
+                  value={editRefTitle}
+                  onChange={(e) => setEditRefTitle(e.target.value)}
+                  className="studio-input w-full p-3 font-sans"
+                  placeholder="Nome do canal ou referência"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2 font-sans">Link (URL)</label>
+                <input
+                  value={editRefUrl}
+                  onChange={(e) => setEditRefUrl(e.target.value)}
+                  className="studio-input w-full p-3 font-sans"
+                  placeholder="https://www.youtube.com/..."
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2 font-sans">Link da Imagem (Thumbnail/Avatar)</label>
+                <input
+                  value={editRefThumbnailUrl}
+                  onChange={(e) => setEditRefThumbnailUrl(e.target.value)}
+                  className="studio-input w-full p-3 font-sans"
+                  placeholder="URL da imagem (avatar ou thumbnail)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-yt-text-secondary mb-2 font-sans">Observação</label>
+                <textarea
+                  rows={3}
+                  value={editRefNote}
+                  onChange={(e) => setEditRefNote(e.target.value)}
+                  className="studio-input w-full p-3 font-sans"
+                  placeholder="O que observar neste canal?"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setEditingReference(null)} className="yt-btn-secondary font-sans border border-yt-bg-overlay px-4 py-2 text-sm text-yt-text-secondary hover:text-yt-text-primary transition-colors cursor-pointer bg-transparent rounded-sm">Cancelar</button>
+                <button type="submit" disabled={editingRefSaving} className="yt-btn-primary font-sans bg-yt-blue hover:bg-yt-blue/80 text-white px-4 py-2 text-sm rounded-sm cursor-pointer border-0 font-bold">
+                  {editingRefSaving ? "Salvando..." : "Salvar Alterações"}
+                </button>
               </div>
             </form>
           </div>

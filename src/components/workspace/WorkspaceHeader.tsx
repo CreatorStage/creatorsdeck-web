@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, VideoIdeaStatus, WorkspaceTab } from "../../types";
+import { User, Channel, VideoIdeaStatus, WorkspaceTab } from "../../types";
 import StudioSidebar from "../shared/StudioSidebar";
 
 interface WorkspaceHeaderProps {
@@ -14,6 +14,7 @@ interface WorkspaceHeaderProps {
   tabs: { id: WorkspaceTab; label: string; icon: string }[];
   onTabChange: (id: WorkspaceTab) => void;
   user?: User | null;
+  channel?: Channel | null;
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   onGoToDashboard?: () => void;
@@ -44,6 +45,7 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   tabs,
   onTabChange,
   user,
+  channel,
   sidebarCollapsed,
   onToggleSidebar,
   onGoToDashboard,
@@ -61,11 +63,32 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
       <header className={`studio-topbar fixed top-0 right-0 left-0 ${sidebarCollapsed ? "md:left-[72px]" : "md:left-[300px]"} z-50 flex items-center justify-between px-6 md:px-10 transition-[left] duration-200 bg-yt-bg-surface border-b border-yt-bg-overlay`}>
         <div className="flex items-center gap-6 min-w-0">
           <nav className="hidden md:flex items-center gap-1 text-sm text-yt-text-secondary">
-            <button onClick={() => onGoToDashboard?.()} className="hover:text-yt-text-primary px-3 py-2 bg-transparent border-0 cursor-pointer font-medium rounded-sm hover:bg-white/5 transition-colors">Painel</button>
+            <button onClick={() => onGoToDashboard?.()} className="hover:text-yt-text-primary px-3 py-2 bg-transparent border-0 cursor-pointer font-medium rounded-sm hover:bg-white/5 transition-colors font-sans">Painel</button>
             <span className="text-yt-bg-overlay">/</span>
-            <button onClick={onBack} className="hover:text-yt-text-primary px-3 py-2 bg-transparent border-0 cursor-pointer font-medium rounded-sm hover:bg-white/5 transition-colors">Banco de Ideias</button>
+            <button onClick={onBack} className="hover:text-yt-text-primary px-3 py-2 bg-transparent border-0 cursor-pointer font-medium rounded-sm hover:bg-white/5 transition-colors font-sans">Banco de Ideias</button>
             <span className="text-yt-bg-overlay">/</span>
-            <span className="text-yt-text-primary px-3 py-2 font-semibold truncate max-w-[200px]">{mainTitle || "Área de Trabalho"}</span>
+            <span className="text-yt-text-primary px-3 py-2 font-semibold truncate max-w-[200px] font-sans">{mainTitle || "Área de Trabalho"}</span>
+            {channel && (
+              <>
+                <span className="text-yt-bg-overlay">/</span>
+                <div className="flex items-center gap-1.5 ml-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-yt-text-primary bg-yt-bg-overlay/40 border border-yt-bg-overlay px-2 py-0.5 rounded font-sans">
+                    {channel.name}
+                  </span>
+                  {channel.channelUrl && (
+                    <a
+                      href={channel.channelUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center w-5 h-5 rounded-full bg-yt-red/10 border border-yt-red/20 text-yt-red hover:bg-yt-red hover:text-white transition-all shrink-0"
+                      title="Abrir meu canal no YouTube"
+                    >
+                      <span className="material-icons text-xs">play_arrow</span>
+                    </a>
+                  )}
+                </div>
+              </>
+            )}
           </nav>
         </div>
 

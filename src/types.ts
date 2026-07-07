@@ -52,9 +52,11 @@ export interface Channel {
   userId: string;
   name: string;
   niche: string;
+  description?: string;
   ctaTemplates?: string[];
   descriptionBlocks?: string;
   checklistTemplates?: string;
+  channelUrl?: string;
   createdAt: string;
   ideasCount?: number;
 }

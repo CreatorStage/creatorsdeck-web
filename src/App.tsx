@@ -179,6 +179,10 @@ export default function App() {
       user={user}
       onLogout={handleLogout}
       onSelectChannel={(channel) => setSelectedChannel(channel)}
+      onSelectIdeaDirectly={(channel, idea) => {
+        setSelectedChannel(channel);
+        setSelectedIdea(idea);
+      }}
       theme={theme}
       toggleTheme={toggleTheme}
     />

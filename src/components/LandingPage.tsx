@@ -83,7 +83,7 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
           <button type="button" onClick={onSignup} className="flex items-center gap-2.5 group">
-            <img src="/apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-10 h-10 object-contain rounded-lg shadow-lg shadow-[#ff5045]/25 group-hover:shadow-[#ff5045]/40 transition-shadow" />
+            <img src="./apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-10 h-10 object-contain rounded-lg shadow-lg shadow-[#ff5045]/25 group-hover:shadow-[#ff5045]/40 transition-shadow" />
             <div className="flex flex-col items-start leading-none text-left">
               <span className="text-base font-bold uppercase tracking-widest text-white">Creators</span>
               <span className="text-base font-bold uppercase tracking-widest text-[#ff5045]">Deck</span>
@@ -437,7 +437,7 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
         <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <img src="/apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-8 h-8 object-contain rounded-md" />
+              <img src="./apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-8 h-8 object-contain rounded-md" />
               <div className="flex flex-col items-start leading-none text-left">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#f1f1f1]">Creators</span>
                 <span className="text-xs font-bold uppercase tracking-widest text-[#ff5045]">Deck</span>

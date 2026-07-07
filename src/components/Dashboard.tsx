@@ -5,16 +5,18 @@ import SettingsDialog from "./SettingsDialog";
 import StudioSidebar from "./shared/StudioSidebar";
 import { swal } from "../utils/swal";
 import { useTranslation } from "react-i18next";
+import GlobalCalendar from "./GlobalCalendar";
 
 interface DashboardProps {
   user: User;
   onLogout: () => void;
   onSelectChannel: (channel: Channel) => void;
+  onSelectIdeaDirectly?: (channel: Channel, idea: any) => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
 }
 
-export default function Dashboard({ user, onLogout, onSelectChannel, theme, toggleTheme }: DashboardProps) {
+export default function Dashboard({ user, onLogout, onSelectChannel, onSelectIdeaDirectly, theme, toggleTheme }: DashboardProps) {
   const { t } = useTranslation();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,10 +24,12 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentView, setCurrentView] = useState<"channels" | "calendar">("channels");
   
   // Modal Fields
   const [name, setName] = useState("");
   const [niche, setNiche] = useState("");
+  const [channelUrl, setChannelUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -74,11 +78,12 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
 
     setSaving(true);
     try {
-      const newChan = await api.createChannel(name, niche);
+      const newChan = await api.createChannel(name, niche, channelUrl);
       setChannels([...channels, { ...newChan, ideasCount: 0 } as any]);
       setShowModal(false);
       setName("");
       setNiche("");
+      setChannelUrl("");
       swal.toast(t('dashboard.success_create'));
     } catch (err: any) {
       if (err instanceof ValidationError) {
@@ -163,12 +168,23 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
               {t('dashboard.new_channel')}
             </button>
 
-            <button className="w-full h-[50px] flex items-center gap-3.5 border-l-[3px] text-left transition-colors border-[#ff5045] bg-yt-bg-elevated text-[#ff5045] cursor-default px-7 border-0">
+            <button
+              onClick={() => { setCurrentView("channels"); setMobileMenuOpen(false); }}
+              className={`w-full h-[50px] flex items-center gap-3.5 text-left transition-colors cursor-default px-7 border-0 ${currentView === "channels" ? "border-l-[3px] border-[#ff5045] bg-yt-bg-elevated text-[#ff5045]" : "border-l-[3px] border-transparent text-yt-text-secondary hover:bg-yt-bg-elevated/50 hover:text-yt-text-primary"}`}
+            >
               <span className="material-icons text-[20px] shrink-0">subscriptions</span>
               <span className="flex items-center justify-between w-full">
                 <span className="text-sm font-semibold">{t('dashboard.active_channels')}</span>
                 <span className="bg-yt-bg-primary text-yt-text-secondary text-[10px] px-2 py-0.5 rounded font-mono">{channels.length}</span>
               </span>
+            </button>
+
+            <button
+              onClick={() => { setCurrentView("calendar"); setMobileMenuOpen(false); }}
+              className={`w-full h-[50px] flex items-center gap-3.5 text-left transition-colors cursor-default px-7 border-0 mt-1 ${currentView === "calendar" ? "border-l-[3px] border-[#ff5045] bg-yt-bg-elevated text-[#ff5045]" : "border-l-[3px] border-transparent text-yt-text-secondary hover:bg-yt-bg-elevated/50 hover:text-yt-text-primary"}`}
+            >
+              <span className="material-icons text-[20px] shrink-0">calendar_month</span>
+              <span className="text-sm font-semibold w-full">{t('dashboard.global_calendar', 'Calendário Geral')}</span>
             </button>
           </StudioSidebar>
         </div>
@@ -238,8 +254,9 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
           }
         >
           <button
-            onClick={() => setShowSettings(true)}
-            className={`w-full h-[50px] flex items-center gap-3.5 border-l-[3px] text-left transition-colors border-[#ff5045] bg-yt-bg-elevated text-[#ff5045] cursor-default ${sidebarCollapsed ? "justify-center px-0" : "px-7"}`}
+            onClick={() => setCurrentView("channels")}
+            className={`w-full h-[50px] flex items-center gap-3.5 text-left transition-colors cursor-default ${sidebarCollapsed ? "justify-center px-0" : "px-7"} ${currentView === "channels" ? "border-l-[3px] border-[#ff5045] bg-yt-bg-elevated text-[#ff5045]" : "border-l-[3px] border-transparent text-yt-text-secondary hover:bg-yt-bg-elevated/50 hover:text-yt-text-primary"}`}
+            title={sidebarCollapsed ? t('dashboard.active_channels') : undefined}
           >
             <span className="material-icons text-[20px] shrink-0">subscriptions</span>
             {!sidebarCollapsed && (
@@ -249,9 +266,33 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => setCurrentView("calendar")}
+            className={`w-full h-[50px] flex items-center gap-3.5 text-left transition-colors cursor-default mt-1 ${sidebarCollapsed ? "justify-center px-0" : "px-7"} ${currentView === "calendar" ? "border-l-[3px] border-[#ff5045] bg-yt-bg-elevated text-[#ff5045]" : "border-l-[3px] border-transparent text-yt-text-secondary hover:bg-yt-bg-elevated/50 hover:text-yt-text-primary"}`}
+            title={sidebarCollapsed ? t('dashboard.global_calendar', 'Calendário Geral') : undefined}
+          >
+            <span className="material-icons text-[20px] shrink-0">calendar_month</span>
+            {!sidebarCollapsed && (
+              <span className="flex items-center justify-between w-full">
+                <span className="text-sm font-semibold">{t('dashboard.global_calendar', 'Calendário Geral')}</span>
+              </span>
+            )}
+          </button>
         </StudioSidebar>
 
-        {/* Content Area (Background bg-yt-bg-primary, padding 24px) */}
+        {/* Content Area */}
+        {currentView === "calendar" ? (
+          <div className={`flex-1 flex flex-col transition-[margin] duration-200 overflow-hidden ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[300px]"}`}>
+            <GlobalCalendar
+              theme={theme}
+              toggleTheme={toggleTheme}
+              onSelectIdeaDirectly={(channel, idea) => {
+                if (onSelectIdeaDirectly) onSelectIdeaDirectly(channel, idea);
+              }}
+            />
+          </div>
+        ) : (
         <main className={`flex-1 bg-yt-bg-primary p-6 overflow-y-auto transition-[margin] duration-200 ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[300px]"}`}>
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-yt-bg-overlay pb-5">
             <div>
@@ -346,6 +387,7 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
             </div>
           )}
         </main>
+        )}
       </div>
 
       {/* Footer */}
@@ -410,6 +452,19 @@ export default function Dashboard({ user, onLogout, onSelectChannel, theme, togg
                 {fieldErrors.niche && (
                   <p className="mt-1 text-xs text-[#ff5045] font-sans">{fieldErrors.niche}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-yt-text-secondary mb-1.5">
+                  Link do Canal (YouTube)
+                </label>
+                <input
+                  type="text"
+                  value={channelUrl}
+                  onChange={(e) => setChannelUrl(e.target.value)}
+                  placeholder="ex: https://www.youtube.com/@meucanal"
+                  className="w-full bg-yt-bg-primary border border-yt-bg-overlay text-yt-text-primary rounded-sm py-2 px-3 focus:outline-none focus:border-yt-red text-sm"
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-yt-bg-overlay">

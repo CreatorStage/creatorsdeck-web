@@ -1062,6 +1062,7 @@ export default function VideoIdeaWorkspace({
           onBack={onBack}
           onTabChange={setCurrentTab}
           user={user}
+          channel={channel}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => {
             if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -1245,7 +1246,7 @@ export default function VideoIdeaWorkspace({
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-yt-bg-surface border-r border-yt-bg-overlay p-3 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <img src="/apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-10 h-10 object-contain rounded-xl shadow-md shadow-[#ff5045]/20" />
+                <img src="./apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-10 h-10 object-contain rounded-xl shadow-md shadow-[#ff5045]/20" />
                 <div className="flex flex-col items-start leading-none text-left">
                   <span className="text-[1.35rem] font-bold uppercase tracking-widest text-yt-text-primary">Creators</span>
                   <span className="text-[1.35rem] font-bold uppercase tracking-widest text-[#ff5045]">Deck</span>

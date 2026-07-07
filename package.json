@@ -3,15 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "electron:start": "vite build && electron .",
+    "build-exe": "vite build && electron-builder"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@xenova/transformers": "^2.17.2",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "http-proxy-middleware": "^3.0.3",
@@ -32,11 +36,50 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.24.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "~5.6.2",
     "vite": "^6.0.0"
+  },
+  "build": {
+    "appId": "com.creatorsdeck.studio",
+    "productName": "CreatorsDeck Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../creatorsdeck-api",
+        "to": "creatorsdeck-api",
+        "filter": [
+          "backend.jar"
+        ]
+      },
+      {
+        "from": "../creatorsdeck-scraper",
+        "to": "creatorsdeck-scraper",
+        "filter": [
+          "**/*",
+          "!.git/**/*",
+          "!.idea/**/*",
+          "!__pycache__/**/*",
+          "!venv/**/*",
+          "!.venv/**/*"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": "nsis"
+    }
   }
 }

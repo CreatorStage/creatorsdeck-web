@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { api, ValidationError } from "../api";
 import { User } from "../types";
 import { useTranslation } from "react-i18next";
@@ -13,14 +13,23 @@ interface AuthScreenProps {
 export default function AuthScreen({ onSuccess, initialMode = "login", onBack }: AuthScreenProps) {
   const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(initialMode === "login");
-  const [username, setUsername] = useState("rodrigmatheus19");
-  const [password, setPassword] = useState("password123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedUsername = localStorage.getItem("remembered_username");
+    if (savedUsername) {
+      setUsername(savedUsername);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,9 +67,19 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
     try {
       if (isLogin) {
         const data = await api.login(username, password);
+        if (rememberMe) {
+          localStorage.setItem("remembered_username", username);
+        } else {
+          localStorage.removeItem("remembered_username");
+        }
         onSuccess(data.token, data.user);
       } else {
         const data = await api.register(username, password);
+        if (rememberMe) {
+          localStorage.setItem("remembered_username", username);
+        } else {
+          localStorage.removeItem("remembered_username");
+        }
         onSuccess(data.token, data.user);
       }
     } catch (err: any) {
@@ -93,7 +112,7 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
         )}
 
         <div className="flex justify-center items-center gap-3">
-          <img src="/apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-12 h-12 object-contain rounded-xl shadow-lg shadow-[#ff5045]/20" />
+          <img src="./apple-touch-icon.png" alt="CreatorsDeck Logo" className="w-12 h-12 object-contain rounded-xl shadow-lg shadow-[#ff5045]/20" />
           <div className="flex flex-col items-start leading-none">
             <span className="text-2xl font-bold uppercase tracking-widest text-[#f1f1f1]">
               Creators
@@ -210,6 +229,18 @@ export default function AuthScreen({ onSuccess, initialMode = "login", onBack }:
                 )}
               </div>
             )}
+
+            <div className="flex items-center pb-1 select-none">
+              <label className="flex items-center text-xs text-[#aaaaaa] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="mr-2 rounded border-[#404040] bg-[#0f0f0f] text-[#ff5045] focus:ring-0 focus:ring-offset-0 focus:outline-none w-4 h-4 cursor-pointer accent-[#ff5045]"
+                />
+                Lembrar do meu usuário
+              </label>
+            </div>
 
             <div className="pt-2">
               <button

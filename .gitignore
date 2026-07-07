@@ -62,3 +62,4 @@ vite.svg
 skills-lock.json
 update_locales.py
 update_landing.py
+release/

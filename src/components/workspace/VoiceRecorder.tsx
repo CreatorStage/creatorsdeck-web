@@ -1,84 +1,33 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-
-// Extend window for webkit prefix
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface ISpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  onstart: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => ISpeechRecognition;
-    webkitSpeechRecognition: new () => ISpeechRecognition;
-  }
-}
+// @ts-ignore
+import MyWorker from "./whisper.worker?worker";
 
 // ============================================
 // Formatting Engine
 // ============================================
 
-/**
- * Fix spacing around punctuation marks:
- * - Remove space before punctuation (e.g. "palavra ." → "palavra.")
- * - Ensure single space after punctuation (except line breaks)
- */
 function fixPunctuationSpacing(text: string): string {
   let result = text;
-  // Remove spaces before punctuation
   result = result.replace(/\s+([.,;:!?)\]"])/g, "$1");
-  // Ensure space after punctuation (if followed by a letter)
   result = result.replace(/([.,;:!?])([A-Za-zÀ-ÿ])/g, "$1 $2");
-  // Remove space after opening brackets/quotes
   result = result.replace(/([(\["])\s+/g, "$1");
   return result;
 }
 
-/**
- * Capitalize the first letter after sentence-ending punctuation (. ! ?)
- * and capitalize the very first character
- */
 function applySmartCapitalization(text: string): string {
   if (!text) return text;
-
-  // Capitalize first character
   let result = text.charAt(0).toUpperCase() + text.slice(1);
-
-  // Capitalize after sentence-ending punctuation followed by space
   result = result.replace(
     /([.!?])\s+([a-zà-ÿ])/g,
     (_, punct, letter) => `${punct} ${letter.toUpperCase()}`
   );
-
-  // Capitalize after line breaks
   result = result.replace(
     /(\n)([a-zà-ÿ])/g,
     (_, newline, letter) => `${newline}${letter.toUpperCase()}`
   );
-
   return result;
 }
 
-/**
- * Full pipeline: spoken text → formatted text with punctuation
- */
 function processTranscript(text: string): string {
   let result = text;
   result = fixPunctuationSpacing(result);
@@ -86,8 +35,30 @@ function processTranscript(text: string): string {
   return result;
 }
 
-// Pause threshold in milliseconds — pauses longer than this insert a line break
-const PAUSE_THRESHOLD_MS = 2000;
+// Resample audio to 16kHz mono Float32Array as required by Whisper
+async function prepareAudioBuffer(audioBlob: Blob): Promise<Float32Array> {
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  const audioContext = new AudioContextClass();
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  
+  const targetSampleRate = 16000;
+  const numberOfChannels = 1;
+  
+  const offlineCtx = new OfflineAudioContext(
+    numberOfChannels,
+    Math.round(audioBuffer.duration * targetSampleRate),
+    targetSampleRate
+  );
+  
+  const bufferSource = offlineCtx.createBufferSource();
+  bufferSource.buffer = audioBuffer;
+  bufferSource.connect(offlineCtx.destination);
+  bufferSource.start();
+  
+  const renderedBuffer = await offlineCtx.startRendering();
+  return renderedBuffer.getChannelData(0);
+}
 
 // ============================================
 // Component
@@ -101,30 +72,57 @@ interface VoiceRecorderProps {
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabled = false }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [rawSegments, setRawSegments] = useState<string[]>([]);
-  const [interimTranscript, setInterimTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSupported, setIsSupported] = useState(true);
   const [showPanel, setShowPanel] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
 
-  const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  // Whisper model loading and transcribing states
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelProgress, setModelProgress] = useState(0);
+  const [modelReady, setModelReady] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  const workerRef = useRef<Worker | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
   const animationFrameRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const lastFinalTimestampRef = useRef<number>(0);
-  const segmentsRef = useRef<string[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setIsSupported(false);
-    }
-    return () => {
-      stopAudioVisualizer();
+  const initWorker = useCallback(() => {
+    if (workerRef.current) return workerRef.current;
+
+    const worker = new MyWorker();
+    workerRef.current = worker;
+
+    worker.onmessage = (event: MessageEvent) => {
+      const { type, progress, text, message } = event.data;
+
+      if (type === "progress") {
+        setModelProgress(Math.round(progress));
+      } else if (type === "ready" || type === "loaded") {
+        setModelReady(true);
+        setModelLoading(false);
+        startRecordingActual();
+      } else if (type === "transcribing") {
+        setIsTranscribing(true);
+      } else if (type === "completed") {
+        setIsTranscribing(false);
+        if (text && text.trim()) {
+          setRawSegments([text.trim()]);
+        }
+      } else if (type === "error") {
+        setIsTranscribing(false);
+        setModelLoading(false);
+        setError(`Erro local no Whisper: ${message}`);
+      }
     };
-  }, []);
+
+    return worker;
+  }, [modelReady]);
 
   const startAudioVisualizer = useCallback(async () => {
     try {
@@ -143,6 +141,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
       const history = new Array(historyLength).fill(0);
 
       const tick = () => {
+        if (!analyserRef.current) return;
         analyser.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
         const normalizedLevel = Math.min(avg / 128, 1);
@@ -160,9 +159,9 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
             
             const barWidth = width / historyLength;
             for (let i = 0; i < historyLength; i++) {
-              const h = Math.max(4, history[i] * height * 0.8); // min 4px height, max 80% canvas height
+              const h = Math.max(4, history[i] * height * 0.8);
               const x = i * barWidth;
-              const y = (height - h) / 2; // Center vertically
+              const y = (height - h) / 2;
               
               ctx.fillStyle = i === historyLength - 1 ? "#ef4444" : "rgba(239, 68, 68, 0.6)";
               
@@ -177,8 +176,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
         animationFrameRef.current = requestAnimationFrame(tick);
       };
       tick();
-    } catch {
-      // If mic access fails for visualizer, just ignore silently
+    } catch (err) {
+      console.error("Erro no visualizador de áudio:", err);
     }
   }, []);
 
@@ -198,88 +197,57 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
     setAudioLevel(0);
   }, []);
 
-  const startRecording = useCallback(() => {
+  const startRecordingActual = () => {
     setError(null);
     setRawSegments([]);
-    setInterimTranscript("");
-    segmentsRef.current = [];
-    lastFinalTimestampRef.current = Date.now();
+    audioChunksRef.current = [];
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setError("Seu navegador não suporta reconhecimento de voz. Use o Chrome ou Edge.");
+    if (!mediaStreamRef.current) {
+      setError("Erro: Microfone não ativado.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "pt-BR";
+    try {
+      const mediaRecorder = new MediaRecorder(mediaStreamRef.current);
+      mediaRecorderRef.current = mediaRecorder;
 
-    recognition.onstart = () => {
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setIsTranscribing(true);
+        
+        try {
+          const float32Array = await prepareAudioBuffer(audioBlob);
+          const worker = initWorker();
+          worker.postMessage({
+            type: "transcribe",
+            audio: float32Array
+          });
+        } catch (err: any) {
+          console.error(err);
+          setError(`Erro ao decodificar áudio: ${err.message || err}`);
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorder.start(250);
       setIsRecording(true);
       setShowPanel(true);
-      startAudioVisualizer();
-    };
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interimText = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) {
-          const now = Date.now();
-          const elapsed = now - lastFinalTimestampRef.current;
-          const text = result[0].transcript.trim();
-
-          if (text) {
-            // If pause was longer than threshold, insert a line break before this segment
-            if (elapsed > PAUSE_THRESHOLD_MS && segmentsRef.current.length > 0) {
-              segmentsRef.current.push("\n" + text);
-            } else {
-              segmentsRef.current.push(text);
-            }
-
-            setRawSegments([...segmentsRef.current]);
-          }
-
-          lastFinalTimestampRef.current = now;
-        } else {
-          interimText += result[0].transcript;
-        }
-      }
-
-      setInterimTranscript(interimText);
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === "not-allowed") {
-        setError("Permissão de microfone negada. Permita o acesso ao microfone nas configurações do navegador.");
-      } else if (event.error === "no-speech") {
-        setError("Nenhuma fala detectada. Tente novamente.");
-      } else if (event.error === "network") {
-        setError("Erro no reconhecimento: network. No Brave ou Chromium, a transcrição por padrão é bloqueada por privacidade. Para habilitar no Brave, ative a opção 'Use Google services for push messaging and speech recognition' (Serviços do Google para push e voz) nas configurações do navegador.");
-      } else if (event.error !== "aborted") {
-        setError(`Erro no reconhecimento: ${event.error}`);
-      }
-      setIsRecording(false);
-      stopAudioVisualizer();
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-      stopAudioVisualizer();
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-  }, [startAudioVisualizer, stopAudioVisualizer]);
+    } catch (err: any) {
+      setError(`Falha ao iniciar gravador: ${err.message || err}`);
+    }
+  };
 
   const stopRecording = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
     }
+    setIsRecording(false);
     stopAudioVisualizer();
   }, [stopAudioVisualizer]);
 
@@ -287,22 +255,43 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
     if (isRecording) {
       stopRecording();
     } else {
-      startRecording();
+      setError(null);
+      if (modelReady) {
+        startAudioVisualizer().then(() => {
+          startRecordingActual();
+        }).catch(() => {
+          setError("Erro ao acessar microfone. Certifique-se de dar permissão.");
+        });
+      } else {
+        setModelLoading(true);
+        startAudioVisualizer().then(() => {
+          const worker = initWorker();
+          worker.postMessage({ type: "load" });
+        }).catch((err) => {
+          setModelLoading(false);
+          setError("Erro ao acessar microfone. Certifique-se de dar permissão.");
+          console.error(err);
+        });
+      }
     }
   };
 
-  // Build the raw joined text (before processing)
-  const rawJoined = rawSegments.join(" ") + (interimTranscript ? " " + interimTranscript : "");
+  useEffect(() => {
+    return () => {
+      stopAudioVisualizer();
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+    };
+  }, [stopAudioVisualizer]);
 
-  // Processed transcript (with spacing, capitalization)
+  const rawJoined = rawSegments.join(" ");
   const processedTranscript = processTranscript(rawJoined.trim());
 
   const handleInsertText = () => {
     if (processedTranscript) {
       onTranscriptReady(processedTranscript);
       setRawSegments([]);
-      setInterimTranscript("");
-      segmentsRef.current = [];
       setShowPanel(false);
     }
   };
@@ -312,24 +301,12 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
       stopRecording();
     }
     setRawSegments([]);
-    setInterimTranscript("");
-    segmentsRef.current = [];
     setShowPanel(false);
     setError(null);
   };
 
-  if (!isSupported) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-sm text-[11px] text-yellow-400">
-        <span className="material-icons text-sm">warning</span>
-        Reconhecimento de voz não suportado neste navegador. Use Chrome ou Edge.
-      </div>
-    );
-  }
-
   return (
     <>
-      {/* Main mic toggle button */}
       <button
         type="button"
         onClick={handleToggleRecording}
@@ -345,7 +322,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
         `}
         title={isRecording ? "Parar gravação" : "Gravar áudio para texto"}
       >
-        {/* Animated pulse rings behind mic icon when recording */}
         {isRecording && (
           <>
             <span
@@ -366,11 +342,10 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
         <span className={`material-icons text-sm relative z-10 transition-colors duration-300 ${isRecording ? "text-red-400" : ""}`}>
           {isRecording ? "stop_circle" : "mic"}
         </span>
-        <span className="relative z-10">
+        <span className="relative z-10 font-sans">
           {isRecording ? "Parar" : "Voz → Texto"}
         </span>
 
-        {/* Live recording indicator dot */}
         {isRecording && (
           <span className="relative z-10 flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -379,8 +354,29 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
         )}
       </button>
 
-      {/* Expanded transcript panel */}
-      {showPanel && (
+      {/* Model loading overlay state */}
+      {modelLoading && (
+        <div className="w-full basis-[100%] mt-3 p-4 bg-yt-bg-elevated border border-yt-border/50 rounded-sm flex flex-col gap-2 animate-in">
+          <div className="flex items-center justify-between text-xs font-semibold text-yt-text-primary font-sans">
+            <span className="flex items-center gap-1.5">
+              <span className="material-icons animate-spin text-sm text-yt-red">refresh</span>
+              Inicializando reconhecimento de voz local (Whisper)...
+            </span>
+            <span>{modelProgress}%</span>
+          </div>
+          <div className="w-full h-1 bg-[#272727] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-yt-red transition-all duration-300" 
+              style={{ width: `${modelProgress}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-yt-text-disabled uppercase tracking-wider font-sans">
+            Baixando inteligência artificial (~75MB) apenas no primeiro uso. Ficará salva no seu computador.
+          </p>
+        </div>
+      )}
+
+      {showPanel && !modelLoading && (
         <div
           className={`
             w-full basis-[100%] mt-3 p-4 rounded-sm border transition-all duration-500 animate-in
@@ -390,7 +386,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
             }
           `}
         >
-          {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               {isRecording ? (
@@ -398,14 +393,14 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
                   <div className="w-[120px] h-8 flex items-center bg-red-500/5 rounded-full px-2 border border-red-500/10">
                     <canvas ref={canvasRef} width={100} height={24} className="w-full h-full" />
                   </div>
-                  <span className="text-[11px] font-semibold text-red-400 uppercase tracking-wider animate-pulse">
-                    Ouvindo...
+                  <span className="text-[11px] font-semibold text-red-400 uppercase tracking-wider animate-pulse font-sans">
+                    Gravando Áudio...
                   </span>
                 </div>
               ) : (
                 <>
-                  <span className="material-icons text-sm text-[#66bb6a]">check_circle</span>
-                  <span className="text-[11px] font-semibold text-[#66bb6a] uppercase tracking-wider">
+                  <span className="material-icons notranslate text-sm text-[#66bb6a]" translate="no">check_circle</span>
+                  <span className="text-[11px] font-semibold text-[#66bb6a] uppercase tracking-wider font-sans">
                     Transcrição Pronta
                   </span>
                 </>
@@ -418,11 +413,10 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
               className="text-yt-text-secondary hover:text-yt-text-primary p-1 rounded-sm hover:bg-white/5 transition-colors cursor-pointer bg-transparent border-0"
               title="Fechar"
             >
-              <span className="material-icons text-sm">close</span>
+              <span className="material-icons notranslate text-sm" translate="no">close</span>
             </button>
           </div>
 
-          {/* Transcript preview — shows processed text */}
           <div
             className={`
               min-h-[80px] max-h-[200px] overflow-y-auto p-3 rounded-sm text-sm leading-relaxed
@@ -432,77 +426,76 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onTranscriptReady, disabl
               }
             `}
           >
-            {processedTranscript ? (
-              <div className="text-yt-text-primary whitespace-pre-wrap">
+            {isTranscribing ? (
+              <div className="flex flex-col items-center justify-center py-6 gap-2">
+                <span className="material-icons notranslate animate-spin text-2xl text-yt-red" translate="no">refresh</span>
+                <span className="text-xs text-yt-text-secondary font-medium font-sans">Processando áudio localmente com Whisper...</span>
+              </div>
+            ) : processedTranscript ? (
+              <div className="text-yt-text-primary whitespace-pre-wrap font-sans">
                 {processedTranscript}
               </div>
             ) : (
-              <p className="text-yt-text-disabled italic text-xs">
+              <p className="text-yt-text-disabled italic text-xs font-sans">
                 {isRecording
-                  ? "Comece a falar... o texto aparecerá aqui em tempo real."
+                  ? "Sua voz está sendo gravada. Pressione Parar para transcrever localmente."
                   : "Nenhum texto capturado."
                 }
               </p>
             )}
           </div>
 
-          {/* Error display */}
           {error && (
-            <div className="mt-2 flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-sm text-[11px] text-red-400">
-              <span className="material-icons text-sm">error_outline</span>
+            <div className="mt-2 flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-sm text-[11px] text-red-400 font-sans">
+              <span className="material-icons notranslate text-sm" translate="no">error_outline</span>
               {error}
             </div>
           )}
 
-          {/* Action buttons */}
-          {!isRecording && processedTranscript && (
+          {!isRecording && processedTranscript && !isTranscribing && (
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <button
                 type="button"
                 onClick={handleInsertText}
-                className="flex items-center gap-1.5 px-4 py-2 bg-yt-red hover:bg-yt-red-hover text-white text-xs font-semibold uppercase tracking-wider rounded-sm transition-all cursor-pointer border-0"
+                className="flex items-center gap-1.5 px-4 py-2 bg-yt-red hover:bg-yt-red-hover text-white text-xs font-semibold uppercase tracking-wider rounded-sm transition-all cursor-pointer border-0 font-sans"
               >
-                <span className="material-icons text-sm">add_circle</span>
+                <span className="material-icons notranslate text-sm" translate="no">add_circle</span>
                 Inserir no Roteiro
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setRawSegments([]);
-                  setInterimTranscript("");
-                  segmentsRef.current = [];
-                  startRecording();
+                  startAudioVisualizer().then(() => {
+                    startRecordingActual();
+                  });
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-yt-bg-elevated hover:bg-yt-bg-overlay text-yt-text-primary text-xs font-semibold uppercase tracking-wider rounded-sm transition-all cursor-pointer border border-yt-bg-overlay"
+                className="flex items-center gap-1.5 px-3 py-2 bg-yt-bg-elevated hover:bg-yt-bg-overlay text-yt-text-primary text-xs font-semibold uppercase tracking-wider rounded-sm transition-all cursor-pointer border border-yt-bg-overlay font-sans"
               >
-                <span className="material-icons text-sm">replay</span>
+                <span className="material-icons notranslate text-sm" translate="no">replay</span>
                 Gravar Novamente
               </button>
               <button
                 type="button"
                 onClick={handleDiscard}
-                className="flex items-center gap-1.5 px-3 py-2 text-yt-text-secondary hover:text-red-400 text-xs font-semibold uppercase tracking-wider rounded-sm transition-all cursor-pointer bg-transparent border-0"
+                className="flex items-center gap-1.5 px-3 py-2 text-yt-text-secondary hover:text-red-400 text-xs font-semibold uppercase tracking-wider rounded-sm transition-all cursor-pointer bg-transparent border-0 font-sans"
               >
-                <span className="material-icons text-sm">delete_outline</span>
+                <span className="material-icons notranslate text-sm" translate="no">delete_outline</span>
                 Descartar
               </button>
             </div>
           )}
 
-          {/* Recording controls */}
           {isRecording && (
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <button
                 type="button"
                 onClick={stopRecording}
-                className="flex items-center gap-1.5 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-semibold uppercase tracking-wider rounded-sm border border-red-500/40 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-semibold uppercase tracking-wider rounded-sm border border-red-500/40 transition-all cursor-pointer font-sans"
               >
-                <span className="material-icons text-sm">stop</span>
+                <span className="material-icons notranslate text-sm" translate="no">stop</span>
                 Finalizar Gravação
               </button>
-              <span className="text-[10px] text-yt-text-disabled font-mono uppercase tracking-wider">
-                Pause 2s para quebrar linha automaticamente
-              </span>
             </div>
           )}
         </div>

@@ -88,6 +88,10 @@ export const api = {
     }
   },
 
+  async getServicesStatus(): Promise<{ name: string; port: string; details: string; status: 'running' | 'stopped' | 'error' }[]> {
+    return requestJson<{ name: string; port: string; details: string; status: 'running' | 'stopped' | 'error' }[]>(`${API_BASE}/api/auth/services-status`);
+  },
+
   // Auth
   async login(username: string, password: string): Promise<{ token: string; user: User }> {
     const res = await requestJson<{ token: string; user: User }>(`${API_BASE}/api/auth/login`, {
@@ -114,10 +118,10 @@ export const api = {
     return requestJson<Channel[]>(`${API_BASE}/api/channels`);
   },
 
-  async createChannel(name: string, niche: string): Promise<Channel> {
+  async createChannel(name: string, niche: string, channelUrl?: string): Promise<Channel> {
     return requestJson<Channel>(`${API_BASE}/api/channels`, {
       method: "POST",
-      body: JSON.stringify({ name, niche }),
+      body: JSON.stringify({ name, niche, channelUrl }),
     });
   },
 
@@ -160,6 +164,13 @@ export const api = {
   async syncChannelSuggestions(channelId: string): Promise<{ message: string; queued: number }> {
     return requestJson<{ message: string; queued: number }>(`${API_BASE}/api/channels/${channelId}/suggestions/sync`, {
       method: "POST",
+    });
+  },
+
+  async updateChannelReferenceLink(id: string, title: string, url: string, note: string, thumbnailUrl?: string, type?: 'LINK' | 'THUMBNAIL' | 'TITLE'): Promise<ChannelReferenceLink> {
+    return requestJson<ChannelReferenceLink>(`${API_BASE}/api/channels/reference-links/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ title, url, note, thumbnailUrl, type }),
     });
   },
 
