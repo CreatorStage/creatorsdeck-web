@@ -254,7 +254,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
       result = result.filter(v => parseViewCount(v.views) >= min);
     }
     if (suggestionDataStatus === "precise_only") {
-      result = result.filter(v => v.preciseViewsCount !== undefined || v.publishedAt !== undefined);
+      result = result.filter(v => v.preciseViewsCount != null || v.publishedAt != null);
     }
     if (suggestionDateRange !== "all") {
       const now = Date.now();
@@ -288,7 +288,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
       });
     }
     return result;
-  }, [suggestions, suggestionFilterChannel, suggestionMinViews, suggestionSort]);
+  }, [suggestions, suggestionFilterChannel, suggestionMinViews, suggestionSort, suggestionDataStatus, suggestionDateRange]);
 
   // Salva viewMode no localStorage ao mudar
   useEffect(() => {
@@ -339,6 +339,9 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
         sourceChannelName: v.sourceChannelName ? v.sourceChannelName.replace(/^\[Canal\]\s*/i, '') : ''
       }));
       setSuggestions(cleaned);
+      // Update channel status as well
+      const statusData = await api.getChannelSuggestionsStatus(channel.id);
+      setChannelStatus(statusData);
     } catch (err) {
       console.error("Erro ao buscar sugestões", err);
     } finally {
