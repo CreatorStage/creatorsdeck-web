@@ -253,6 +253,7 @@ const ScriptBlockCard: React.FC<ScriptBlockCardProps> = ({
           onBlur={handleBlur}
           className="w-full text-base leading-relaxed text-yt-text-primary focus:outline-none"
           style={{ outline: "none", wordBreak: "break-word" }}
+          spellCheck={false}
         />
       </div>
     </div>

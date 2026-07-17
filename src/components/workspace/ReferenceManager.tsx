@@ -1,5 +1,6 @@
 import React from "react";
 import { Reference } from "../../types";
+import api, { getAbsoluteUrl } from "../../api";
 import { getYouTubeEmbedUrl } from "./scriptUtils";
 
 interface ReferenceManagerProps {
@@ -210,7 +211,7 @@ const ReferenceManager: React.FC<ReferenceManagerProps> = ({
                 {imageRefs.map(ref => (
                   <div key={ref.id} className="aspect-square bg-yt-bg-primary border border-yt-bg-overlay rounded-[4px] relative group overflow-hidden hover:border-yt-text-secondary transition-all">
                     <img 
-                      src={ref.url.includes('hqdefault.jpg') ? ref.url.replace('hqdefault.jpg', 'maxresdefault.jpg') : ref.url} 
+                      src={ref.url.includes('hqdefault.jpg') ? ref.url.replace('hqdefault.jpg', 'maxresdefault.jpg') : getAbsoluteUrl(ref.url)} 
                       alt={ref.label} 
                       className="w-full h-full object-cover" 
                       onError={(e) => {

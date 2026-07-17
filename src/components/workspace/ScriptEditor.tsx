@@ -3,6 +3,8 @@ import { ScriptVersion } from "../../types";
 import { ScriptBlock } from "./scriptUtils";
 import ScriptBlockCard from "./ScriptBlockCard";
 import VoiceRecorder from "./VoiceRecorder";
+import TextSelectionToolbar from "./TextSelectionToolbar";
+import ScriptDiffViewer from "./ScriptDiffViewer";
 
 interface ScriptEditorProps {
   editorMode: "continuous" | "blocks";
@@ -71,6 +73,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 }) => {
   const [versionLabel, setVersionLabel] = useState("");
   const [versionToDelete, setVersionToDelete] = useState<ScriptVersion | null>(null);
+  const [versionToDiff, setVersionToDiff] = useState<ScriptVersion | null>(null);
 
   const handleSaveVersion = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +84,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   return (
     <div className="w-full space-y-4 p-7">
+      <TextSelectionToolbar />
 
       {/* Header + Mode Toggle */}
       <div className="flex items-center justify-between border-b border-yt-bg-overlay/50 pb-3 mb-2 flex-wrap gap-3 select-none">
@@ -361,22 +365,20 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                 let formatted = scriptContent;
                 // 1. Normalize spaces (remove consecutive spaces)
                 formatted = formatted.replace(/[^\S\r\n]+/g, " ");
-                // 2. Ensure spaces after punctuation marks if missing
-                formatted = formatted.replace(/([.,?!])(?=[^\s"’\])])/g, "$1 ");
-                // 3. Break long walls of text into paragraphs:
-                // Replaces ". ", "? ", "! " followed by an uppercase letter with a double newline
-                formatted = formatted.replace(/([.?!])\s+(?=[A-ZÀ-Ÿ])/g, "$1\n\n");
-                // 4. Ensure tags are on their own lines
+                // 2. Ensure spaces after punctuation marks if missing (only if followed by a letter to avoid decimals)
+                formatted = formatted.replace(/([.,?!])(?=[a-zA-ZÀ-Ÿ])/g, "$1 ");
+                // 3. Ensure tags are on their own lines
                 formatted = formatted.replace(/(?<!\n)(?<!^)(\[[A-ZÊÓÍÁÂÃÕ]+\])/g, "\n\n$1");
-                // 5. Ensure max 2 consecutive newlines
+                formatted = formatted.replace(/(\[[A-ZÊÓÍÁÂÃÕ]+\])(?!\n)/g, "$1\n");
+                // 4. Ensure max 2 consecutive newlines
                 formatted = formatted.replace(/\n{3,}/g, "\n\n");
-                // 6. Trim each line
+                // 5. Trim each line
                 formatted = formatted.split("\n").map(line => line.trim()).join("\n");
                 
                 onEditorContentChange(formatted);
               }}
               className="px-2.5 py-1 bg-yt-bg-overlay hover:bg-yt-bg-elevated text-yt-text-primary text-[10px] font-mono font-semibold rounded-full uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
-              title="Formatar Texto (quebrar em parágrafos e organizar)"
+              title="Formatar Texto (organizar tags e espaços)"
             >
               <span className="material-icons text-[14px]">auto_fix_high</span>
               Formatar
@@ -394,6 +396,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
               className="w-full min-h-[400px] max-h-[600px] overflow-y-auto p-5 bg-yt-bg-primary border border-yt-bg-overlay text-yt-text-primary rounded-sm text-lg focus:outline-none focus:border-yt-red leading-relaxed font-sans"
               style={{ outline: "none", resize: "vertical" }}
               placeholder="Escreva o roteiro oficial do seu vídeo aqui usando Markdown. Use tags como [GANCHO], [CONTEÚDO], [CONCLUSÃO] para separar os blocos."
+              spellCheck={false}
             />
           </div>
         </div>
@@ -476,6 +479,14 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
+                    onClick={() => setVersionToDiff(version)}
+                    className="shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-yt-text-primary hover:bg-yt-bg-overlay border border-yt-bg-overlay rounded-sm flex items-center gap-1 transition-colors"
+                  >
+                    <span className="material-icons text-[14px]">compare_arrows</span>
+                    Comparar
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => onRestoreVersion(version.id)}
                     className="shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-yt-red hover:bg-yt-red/10 border border-yt-red/30 rounded-sm"
                   >
@@ -541,6 +552,20 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Diff Viewer Modal */}
+      {versionToDiff && (
+        <ScriptDiffViewer
+          oldText={versionToDiff.content}
+          newText={scriptContent}
+          versionLabel={versionToDiff.label}
+          onClose={() => setVersionToDiff(null)}
+          onRestore={() => {
+            onRestoreVersion(versionToDiff.id);
+            setVersionToDiff(null);
+          }}
+        />
       )}
     </div>
   );

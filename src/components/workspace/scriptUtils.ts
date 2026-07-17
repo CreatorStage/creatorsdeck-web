@@ -58,13 +58,35 @@ export const blocksToMarkdown = (blocks: ScriptBlock[]): string => {
     const temp = document.createElement("div");
     temp.innerHTML = block.html;
     
-    const badge = temp.querySelector("span");
+    const badge = temp.querySelector("span[contenteditable='false']");
     if (badge && badge.textContent && ["GANCHO", "CONTEÚDO", "CONCLUSÃO", "CTA"].includes(badge.textContent.toUpperCase())) {
       badge.remove();
     }
     
-    let text = temp.innerText || temp.textContent || "";
-    text = text.trim();
+    let html = temp.innerHTML;
+    
+    // Replace <br> and <p> tags with newlines
+    html = html.replace(/<br\s*[\/]?>/gi, "\n");
+    html = html.replace(/<\/p>/gi, "\n\n");
+    
+    // Basic markdown: bold, italic, underline, strikethrough
+    html = html.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, "**$1**");
+    html = html.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, "**$1**");
+    html = html.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, "*$1*");
+    html = html.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, "*$1*");
+    html = html.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, "_$1_");
+    html = html.replace(/<strike[^>]*>([\s\S]*?)<\/strike>/gi, "~~$1~~");
+    html = html.replace(/<s[^>]*>([\s\S]*?)<\/s>/gi, "~~$1~~");
+    
+    // Remove remaining HTML tags
+    html = html.replace(/<[^>]+>/g, '');
+    
+    // Decode HTML entities
+    const decoder = document.createElement('textarea');
+    decoder.innerHTML = html;
+    let text = decoder.value;
+    
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
     
     switch (block.type) {
       case "hook": return `[GANCHO]\n${text}`;
@@ -107,32 +129,16 @@ export const markdownToBlocks = (markdown: string): ScriptBlock[] => {
       text = part.replace(/^\[CTA\]/i, "").trim();
     }
     
-    const htmlText = text.split("\n").map(line => line).join("<br/>");
+    let htmlText = text.split("\n").map(line => line).join("<br/>");
     
-    let html = "";
-    if (type === "paragraph") {
-      html = `<p style="color: #f1f1f1;">${htmlText}</p>`;
-    } else if (type === "hook") {
-      html = `<div style="background-color: rgba(220, 38, 38, 0.22); border-left: 4px solid #ef4444; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #fef2f2;">
-                <span contenteditable="false" style="background-color: #dc2626; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">GANCHO</span>
-                ${htmlText}
-              </div>`;
-    } else if (type === "dev") {
-      html = `<div style="background-color: rgba(37, 99, 235, 0.22); border-left: 4px solid #60a5fa; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #eff6ff;">
-                <span contenteditable="false" style="background-color: #2563eb; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CONTEÚDO</span>
-                ${htmlText}
-              </div>`;
-    } else if (type === "final") {
-      html = `<div style="background-color: rgba(217, 119, 6, 0.22); border-left: 4px solid #fbbf24; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #fffbeb;">
-                <span contenteditable="false" style="background-color: #d97706; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CONCLUSÃO</span>
-                ${htmlText}
-              </div>`;
-    } else if (type === "cta") {
-      html = `<div style="background-color: rgba(5, 150, 105, 0.22); border-left: 4px solid #34d399; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #ecfdf5;">
-                <span contenteditable="false" style="background-color: #059669; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CTA</span>
-                ${htmlText}
-              </div>`;
-    }
+    // Convert markdown to HTML
+    htmlText = htmlText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    htmlText = htmlText.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    htmlText = htmlText.replace(/_(.*?)_/g, "<u>$1</u>");
+    htmlText = htmlText.replace(/~~(.*?)~~/g, "<strike>$1</strike>");
+    
+    // Clean HTML without hardcoded styles or badges (ScriptBlockCard handles visual presentation)
+    let html = `<p>${htmlText}</p>`;
     
     return {
       id: `block-${i}-${Math.random().toString(36).substr(2, 5)}`,

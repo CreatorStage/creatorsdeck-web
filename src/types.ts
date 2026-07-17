@@ -82,6 +82,8 @@ export interface SuggestedVideo {
   views?: string;
   thumbnailUrl?: string;
   createdAt: string;
+  publishedAt?: string;
+  preciseViewsCount?: number;
 }
 
 export type VideoIdeaStatus = 'IDEA' | 'RESEARCHING' | 'SCRIPTING' | 'READY_TO_RECORD' | 'RECORDED' | 'EDITING' | 'SCHEDULED' | 'PUBLISHED' | 'ARCHIVED';

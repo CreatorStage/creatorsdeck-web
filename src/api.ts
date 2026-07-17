@@ -2,6 +2,14 @@ import { Channel, ChannelReferenceLink, VideoIdea, Reference, Note, VideoScript,
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/+$/, ""); // Configurable API base URL, defaults to relative path proxy for local run
 
+export function getAbsoluteUrl(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:")) {
+    return url;
+  }
+  return `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 type UnauthorizedHandler = () => void;
 
 let unauthorizedHandler: UnauthorizedHandler | null = null;

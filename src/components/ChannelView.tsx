@@ -139,7 +139,9 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
   const [showChannelStatusPanel, setShowChannelStatusPanel] = useState(false);
   const [suggestionFilterChannel, setSuggestionFilterChannel] = useState("");
   const [suggestionMinViews, setSuggestionMinViews] = useState("");
-  const [suggestionSort, setSuggestionSort] = useState<"views" | "default">("views");
+  const [suggestionSort, setSuggestionSort] = useState<"views" | "default" | "newest" | "oldest">("views");
+  const [suggestionDateRange, setSuggestionDateRange] = useState<"all" | "7d" | "30d" | "365d">("all");
+  const [suggestionDataStatus, setSuggestionDataStatus] = useState<"all" | "precise_only">("all");
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Converte string de views (ex: "269K", "2.3 mi", "126 mil") para número para comparação
@@ -193,6 +195,34 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
     };
   };
 
+  const parseYouTubeDate = (dateStr: string | undefined): number => {
+    if (!dateStr) return 0;
+    if (dateStr.includes('há')) {
+      const num = parseInt(dateStr.replace(/\D/g, '')) || 1;
+      let ms = 0;
+      if (dateStr.includes('minuto')) ms = num * 60000;
+      else if (dateStr.includes('hora')) ms = num * 3600000;
+      else if (dateStr.includes('dia')) ms = num * 86400000;
+      else if (dateStr.includes('semana')) ms = num * 604800000;
+      else if (dateStr.includes('mês') || dateStr.includes('mes')) ms = num * 2592000000;
+      else if (dateStr.includes('ano')) ms = num * 31536000000;
+      return Date.now() - ms;
+    }
+    const months: Record<string, number> = {
+      'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5,
+      'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11
+    };
+    const match = dateStr.match(/(\d{1,2}) de ([a-z]{3})\.? de (\d{4})/i);
+    if (match) {
+      const day = parseInt(match[1]);
+      const monthStr = match[2].toLowerCase();
+      const year = parseInt(match[3]);
+      const month = months[monthStr] !== undefined ? months[monthStr] : 0;
+      return new Date(year, month, day).getTime();
+    }
+    return 0;
+  };
+
   const filteredSuggestions = useMemo(() => {
     let result = [...suggestions];
     if (suggestionFilterChannel) {
@@ -202,8 +232,39 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
       const min = parseInt(suggestionMinViews, 10);
       result = result.filter(v => parseViewCount(v.views) >= min);
     }
+    if (suggestionDataStatus === "precise_only") {
+      result = result.filter(v => v.preciseViewsCount !== undefined || v.publishedAt !== undefined);
+    }
+    if (suggestionDateRange !== "all") {
+      const now = Date.now();
+      result = result.filter(v => {
+        const time = v.publishedAt ? parseYouTubeDate(v.publishedAt) : new Date(v.createdAt).getTime();
+        if (time === 0) return true; // Keep if we can't parse
+        const diff = now - time;
+        if (suggestionDateRange === "7d") return diff <= 7 * 86400000;
+        if (suggestionDateRange === "30d") return diff <= 30 * 86400000;
+        if (suggestionDateRange === "365d") return diff <= 365 * 86400000;
+        return true;
+      });
+    }
     if (suggestionSort === "views") {
-      result.sort((a, b) => parseViewCount(b.views) - parseViewCount(a.views));
+      result.sort((a, b) => {
+        const viewsA = a.preciseViewsCount !== undefined && a.preciseViewsCount !== null ? a.preciseViewsCount : parseViewCount(a.views);
+        const viewsB = b.preciseViewsCount !== undefined && b.preciseViewsCount !== null ? b.preciseViewsCount : parseViewCount(b.views);
+        return viewsB - viewsA;
+      });
+    } else if (suggestionSort === "newest") {
+      result.sort((a, b) => {
+        const timeA = a.publishedAt ? parseYouTubeDate(a.publishedAt) : new Date(a.createdAt).getTime();
+        const timeB = b.publishedAt ? parseYouTubeDate(b.publishedAt) : new Date(b.createdAt).getTime();
+        return timeB - timeA;
+      });
+    } else if (suggestionSort === "oldest") {
+      result.sort((a, b) => {
+        const timeA = a.publishedAt ? parseYouTubeDate(a.publishedAt) : new Date(a.createdAt).getTime();
+        const timeB = b.publishedAt ? parseYouTubeDate(b.publishedAt) : new Date(b.createdAt).getTime();
+        return timeA - timeB;
+      });
     }
     return result;
   }, [suggestions, suggestionFilterChannel, suggestionMinViews, suggestionSort]);
@@ -1135,11 +1196,35 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                   {/* Ordenação */}
                   <select
                     value={suggestionSort}
-                    onChange={e => setSuggestionSort(e.target.value as "views" | "default")}
+                    onChange={e => setSuggestionSort(e.target.value as "views" | "default" | "newest" | "oldest")}
                     className="studio-input py-1.5 px-3 text-xs bg-yt-bg-elevated border border-yt-bg-overlay rounded text-yt-text-primary focus:outline-none cursor-pointer font-sans"
                   >
                     <option value="default">Ordem padrão</option>
                     <option value="views">Maior número de views</option>
+                    <option value="newest">Mais recentes</option>
+                    <option value="oldest">Mais antigos</option>
+                  </select>
+
+                  {/* Filtro de Data */}
+                  <select
+                    value={suggestionDateRange}
+                    onChange={e => setSuggestionDateRange(e.target.value as any)}
+                    className="studio-input py-1.5 px-3 text-xs bg-yt-bg-elevated border border-yt-bg-overlay rounded text-yt-text-primary focus:outline-none cursor-pointer font-sans"
+                  >
+                    <option value="all">Qualquer data</option>
+                    <option value="7d">Últimos 7 dias</option>
+                    <option value="30d">Últimos 30 dias</option>
+                    <option value="365d">Último ano</option>
+                  </select>
+
+                  {/* Filtro de Status de Dados (Scraper 2) */}
+                  <select
+                    value={suggestionDataStatus}
+                    onChange={e => setSuggestionDataStatus(e.target.value as any)}
+                    className="studio-input py-1.5 px-3 text-xs bg-yt-bg-elevated border border-yt-bg-overlay rounded text-yt-text-primary focus:outline-none cursor-pointer font-sans"
+                  >
+                    <option value="all">Qualquer Status</option>
+                    <option value="precise_only">Apenas dados verificados</option>
                   </select>
 
                   {/* Contador de resultados */}
@@ -1288,16 +1373,29 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                           </a>
 
                           {/* Views Count / Age */}
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {(() => {
-                              const details = getViewsDetails(video.views);
-                              return (
-                                <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-sm border ${details.badgeClass}`}>
-                                  <span className="material-icons notranslate text-[12px]" translate="no">{details.icon}</span>
-                                  {details.text}
-                                </span>
-                              );
-                            })()}
+                          <div className="mt-2 flex flex-col items-start gap-1.5">
+                            {video.publishedAt && (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-sm border bg-yt-bg-overlay/20 text-yt-text-secondary border-yt-bg-overlay">
+                                <span className="material-icons notranslate text-[12px]" translate="no">calendar_today</span>
+                                {video.publishedAt.replace(/^Transmitido ao vivo em\s+/i, '').replace(/^Estreou em\s+/i, '')}
+                              </span>
+                            )}
+                            {video.preciseViewsCount !== undefined && video.preciseViewsCount !== null ? (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-sm border bg-[#66bb6a]/10 text-[#66bb6a] border-[#66bb6a]/30 font-bold">
+                                <span className="material-icons notranslate text-[12px]" translate="no">check_circle</span>
+                                {video.preciseViewsCount.toLocaleString('pt-BR')} visualizações (Verificado)
+                              </span>
+                            ) : (
+                              (() => {
+                                const details = getViewsDetails(video.views);
+                                return (
+                                  <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-sm border ${details.badgeClass}`}>
+                                    <span className="material-icons notranslate text-[12px]" translate="no">{details.icon}</span>
+                                    {details.text}
+                                  </span>
+                                );
+                              })()
+                            )}
                           </div>
                         </div>
                       </div>

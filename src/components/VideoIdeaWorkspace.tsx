@@ -729,23 +729,11 @@ export default function VideoIdeaWorkspace({
 
   const handleInsertBlockAt = (index: number, type: "paragraph" | "hook" | "dev" | "final" | "cta") => {
     const htmlBlocks: Record<string, string> = {
-      paragraph: `<p style="color: #f1f1f1;">Insira seu texto aqui...</p>`,
-      hook: `<div style="background-color: rgba(220, 38, 38, 0.22); border-left: 4px solid #ef4444; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #fef2f2;">
-               <span contenteditable="false" style="background-color: #dc2626; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">GANCHO</span>
-               <strong style="color: #fca5a5;">Insira seu gancho de atenção aqui!</strong> Desperte a curiosidade do espectador nos primeiros 5 segundos.
-             </div>`,
-      dev: `<div style="background-color: rgba(37, 99, 235, 0.22); border-left: 4px solid #60a5fa; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #eff6ff;">
-              <span contenteditable="false" style="background-color: #2563eb; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CONTEÚDO</span>
-              <strong style="color: #93c5fd;">Desenvolva o roteiro do vídeo aqui.</strong> Use frases curtas, dinâmicas e destaque pontos-chave em negrito.
-            </div>`,
-      final: `<div style="background-color: rgba(217, 119, 6, 0.22); border-left: 4px solid #fbbf24; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #fffbeb;">
-                <span contenteditable="false" style="background-color: #d97706; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CONCLUSÃO</span>
-                <strong style="color: #fcd34d;">Faça um resumo rápido do vídeo</strong> e prepare o espectador para a chamada de ação final.
-              </div>`,
-      cta: `<div style="background-color: rgba(5, 150, 105, 0.22); border-left: 4px solid #34d399; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #ecfdf5;">
-              <span contenteditable="false" style="background-color: #059669; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CTA</span>
-              <span style="color: #6ee7b7;">Peça o like, inscrição, ou indique o próximo vídeo recomendado.</span>
-            </div>`
+      paragraph: `<p>Insira seu texto aqui...</p>`,
+      hook: `<p><strong>Insira seu gancho de atenção aqui!</strong> Desperte a curiosidade do espectador nos primeiros 5 segundos.</p>`,
+      dev: `<p><strong>Desenvolva o roteiro do vídeo aqui.</strong> Use frases curtas, dinâmicas e destaque pontos-chave em negrito.</p>`,
+      final: `<p><strong>Faça um resumo rápido do vídeo</strong> e prepare o espectador para a chamada de ação final.</p>`,
+      cta: `<p>Peça o like, inscrição, ou indique o próximo vídeo recomendado.</p>`
     };
 
     const newBlock: ScriptBlock = {
@@ -794,30 +782,7 @@ export default function VideoIdeaWorkspace({
       innerContent = "Insira o conteúdo deste parágrafo aqui...";
     }
 
-    let newHtml = "";
-    if (newType === 'paragraph') {
-      newHtml = `<p style="color: #f1f1f1;">${innerContent}</p>`;
-    } else if (newType === 'hook') {
-      newHtml = `<div style="background-color: rgba(220, 38, 38, 0.22); border-left: 4px solid #ef4444; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #fef2f2;">
-                  <span contenteditable="false" style="background-color: #dc2626; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">GANCHO</span>
-                  ${innerContent}
-                </div>`;
-    } else if (newType === 'dev') {
-      newHtml = `<div style="background-color: rgba(37, 99, 235, 0.22); border-left: 4px solid #60a5fa; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #eff6ff;">
-                  <span contenteditable="false" style="background-color: #2563eb; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CONTEÚDO</span>
-                  ${innerContent}
-                </div>`;
-    } else if (newType === 'final') {
-      newHtml = `<div style="background-color: rgba(217, 119, 6, 0.22); border-left: 4px solid #fbbf24; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #fffbeb;">
-                  <span contenteditable="false" style="background-color: #d97706; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CONCLUSÃO</span>
-                  ${innerContent}
-                </div>`;
-    } else if (newType === 'cta') {
-      newHtml = `<div style="background-color: rgba(5, 150, 105, 0.22); border-left: 4px solid #34d399; padding: 12px 16px; margin: 12px 0; border-radius: 4px; font-family: 'Montserrat', sans-serif; color: #ecfdf5;">
-                  <span contenteditable="false" style="background-color: #059669; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 8px; display: inline-block; letter-spacing: 0.05em; user-select: none;">CTA</span>
-                  ${innerContent}
-                </div>`;
-    }
+    let newHtml = `<p>${innerContent}</p>`;
 
     updated[index].type = newType;
     updated[index].html = newHtml;

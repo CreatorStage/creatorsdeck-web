@@ -157,7 +157,7 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
               </div>
             )}
 
-            <button onClick={onBack} className={`w-full text-left text-yt-text-secondary hover:text-yt-text-primary flex items-center gap-3 text-sm transition-colors bg-transparent border-0 cursor-pointer ${sidebarCollapsed ? "justify-center" : ""}`}>
+            <button onClick={onBack} className={`text-left text-yt-text-secondary hover:text-yt-text-primary hover:bg-yt-bg-overlay rounded-lg flex items-center gap-3 text-sm transition-all bg-transparent border-0 cursor-pointer mx-3 ${sidebarCollapsed ? "w-[44px] h-[44px] justify-center px-0" : "w-[calc(100%-24px)] h-[44px] px-4"}`}>
               <span className="material-icons text-[18px]">arrow_back</span>
               {!sidebarCollapsed && <span className="font-medium">Voltar ao Banco de Ideias</span>}
             </button>
@@ -182,14 +182,16 @@ const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               title={mapped.label}
-              className={`w-full h-[50px] flex items-center gap-3.5 border-l-[3px] text-left transition-colors border-0 cursor-pointer ${
+              className={`flex items-center gap-3.5 text-left transition-all duration-200 border-0 cursor-pointer rounded-lg mx-3 ${
+                sidebarCollapsed ? "w-[44px] h-[44px] justify-center px-0" : "w-[calc(100%-24px)] h-[44px] px-4"
+              } ${
                 isActive
-                  ? "bg-yt-bg-elevated border-yt-red text-yt-red"
-                  : "border-transparent text-yt-text-secondary hover:bg-yt-bg-elevated hover:text-yt-text-primary"
-              } ${sidebarCollapsed ? "justify-center px-0" : "px-7"}`}
+                  ? "bg-[#ff5045]/10 text-yt-red font-semibold"
+                  : "bg-transparent text-yt-text-secondary hover:bg-yt-bg-overlay hover:text-yt-text-primary"
+              }`}
             >
-              <span className="material-icons text-[20px] shrink-0">{mapped.icon}</span>
-              {!sidebarCollapsed && <span className="text-sm font-semibold">{mapped.label}</span>}
+              <span className={`material-icons text-[20px] shrink-0 ${isActive ? 'text-yt-red' : ''}`}>{mapped.icon}</span>
+              {!sidebarCollapsed && <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>{mapped.label}</span>}
             </button>
           );
         })}

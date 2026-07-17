@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { VideoIdea } from "../../types";
+import { getAbsoluteUrl } from "../../api";
 
 interface ThumbnailSimulatorProps {
   idea: VideoIdea;
@@ -250,7 +251,7 @@ export default function ThumbnailSimulator({ idea, alternativeTitles, onAddTitle
                       {thumbnail ? (
                         <>
                           <img
-                            src={thumbnail.url}
+                            src={getAbsoluteUrl(thumbnail.url)}
                             alt={thumbnail.name}
                             className="absolute inset-0 w-full h-full object-cover"
                           />
