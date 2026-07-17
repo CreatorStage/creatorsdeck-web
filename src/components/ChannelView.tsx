@@ -1147,13 +1147,24 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-3 text-xs font-bold font-sans">
-                        <span className="flex items-center gap-1.5 text-[#66bb6a]">
+                        <span className="flex items-center gap-1.5 text-[#66bb6a]" title="Canais rasparados">
                           <span className="w-2 h-2 rounded-full bg-[#66bb6a] inline-block"></span>
                           {channelStatus.filter(c => c.scraped).length} concluídos
                         </span>
-                        <span className="flex items-center gap-1.5 text-yt-text-disabled">
+                        <span className="flex items-center gap-1.5 text-yt-text-disabled" title="Canais pendentes">
                           <span className="w-2 h-2 rounded-full bg-yt-text-disabled inline-block"></span>
                           {channelStatus.filter(c => !c.scraped).length} pendentes
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-yt-bg-overlay mx-1"></div>
+                      <div className="flex items-center gap-3 text-xs font-bold font-sans">
+                        <span className="flex items-center gap-1 text-sky-400" title="Vídeos com dados verificados">
+                          <span className="material-icons text-[14px]">verified</span>
+                          {suggestions.filter(v => v.preciseViewsCount != null || v.publishedAt != null).length} vídeos validados
+                        </span>
+                        <span className="flex items-center gap-1 text-yt-text-disabled" title="Vídeos aguardando verificação">
+                          <span className="material-icons text-[14px]">pending</span>
+                          {suggestions.length - suggestions.filter(v => v.preciseViewsCount != null || v.publishedAt != null).length} pendentes
                         </span>
                       </div>
                       <span className="material-icons text-yt-text-secondary text-lg transition-transform duration-200" style={{ transform: showChannelStatusPanel ? "rotate(180deg)" : "rotate(0deg)" }}>
