@@ -254,7 +254,7 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
       result = result.filter(v => parseViewCount(v.views) >= min);
     }
     if (suggestionDataStatus === "precise_only") {
-      result = result.filter(v => v.preciseViewsCount != null || v.publishedAt != null);
+      result = result.filter(v => v.preciseDataCollected === true);
     }
     if (suggestionDateRange !== "all") {
       const now = Date.now();
@@ -1160,11 +1160,11 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
                       <div className="flex items-center gap-3 text-xs font-bold font-sans">
                         <span className="flex items-center gap-1 text-sky-400" title="Vídeos com dados verificados">
                           <span className="material-icons text-[14px]">verified</span>
-                          {suggestions.filter(v => v.preciseViewsCount != null || v.publishedAt != null).length} vídeos validados
+                          {suggestions.filter(v => v.preciseDataCollected === true).length} vídeos validados
                         </span>
                         <span className="flex items-center gap-1 text-yt-text-disabled" title="Vídeos aguardando verificação">
                           <span className="material-icons text-[14px]">pending</span>
-                          {suggestions.length - suggestions.filter(v => v.preciseViewsCount != null || v.publishedAt != null).length} pendentes
+                          {suggestions.length - suggestions.filter(v => v.preciseDataCollected === true).length} pendentes
                         </span>
                       </div>
                       <span className="material-icons text-yt-text-secondary text-lg transition-transform duration-200" style={{ transform: showChannelStatusPanel ? "rotate(180deg)" : "rotate(0deg)" }}>

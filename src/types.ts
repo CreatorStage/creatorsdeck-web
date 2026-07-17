@@ -84,6 +84,7 @@ export interface SuggestedVideo {
   createdAt: string;
   publishedAt?: string;
   preciseViewsCount?: number;
+  preciseDataCollected?: boolean;
 }
 
 export type VideoIdeaStatus = 'IDEA' | 'RESEARCHING' | 'SCRIPTING' | 'READY_TO_RECORD' | 'RECORDED' | 'EDITING' | 'SCHEDULED' | 'PUBLISHED' | 'ARCHIVED';
