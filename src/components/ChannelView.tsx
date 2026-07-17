@@ -144,15 +144,36 @@ export default function ChannelView({ channel, onBack, onSelectIdea, onChannelUp
   const [suggestionDataStatus, setSuggestionDataStatus] = useState<"all" | "precise_only">("all");
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  // Converte string de views (ex: "269K", "2.3 mi", "126 mil") para número para comparação
+  // Converte string de views (ex: "269K", "2.3 mi", "126 mil", "4.910") para número para comparação
   const parseViewCount = (views?: string): number => {
     if (!views) return 0;
-    const v = views.toLowerCase().replace(/[\s.]/g, "").replace(",", ".");
-    if (v.includes("mil")) return parseFloat(v) * 1_000;
-    if (v.includes("bi") || v.includes("b")) return parseFloat(v) * 1_000_000_000;
-    if (v.includes("mi") || v.includes("m")) return parseFloat(v) * 1_000_000;
-    if (v.includes("k")) return parseFloat(v) * 1_000;
-    return parseFloat(v) || 0;
+    
+    // Extrai o número e o multiplicador opcional isolado (ex: mil, mi, bi, k, m, b)
+    const regex = /([\d.,]+)\s*(mil|mi|bi|k|m|b)?(?:\s|$|[^a-z])/i;
+    const match = views.match(regex);
+    if (!match) return 0;
+    
+    let numStr = match[1];
+    const multiplier = match[2]?.toLowerCase();
+    
+    // Se tiver vírgula, consideramos padrão PT-BR decimal (ex: 4,9 mil -> 4.9)
+    if (numStr.includes(",")) {
+        numStr = numStr.replace(/\./g, "").replace(",", ".");
+    } else {
+        // Se não tiver vírgula, removemos os pontos apenas se forem separadores de milhar (seguidos de 3 dígitos)
+        // Isso preserva decimais em inglês (ex: 4.9K -> mantém 4.9), mas conserta 4.910 -> 4910
+        numStr = numStr.replace(/\.(\d{3})/g, "$1");
+    }
+    
+    let num = parseFloat(numStr) || 0;
+    
+    if (multiplier) {
+        if (multiplier === "mil" || multiplier === "k") num *= 1_000;
+        else if (multiplier === "mi" || multiplier === "m") num *= 1_000_000;
+        else if (multiplier === "bi" || multiplier === "b") num *= 1_000_000_000;
+    }
+    
+    return num;
   };
 
   const getViewsDetails = (viewsStr?: string) => {
